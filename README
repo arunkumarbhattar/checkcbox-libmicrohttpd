@@ -95,3 +95,9 @@ at all) newer implementation is in src/lib/, with the new API in
 src/include/microhttpd2.h.  The experimental code will need MUCH
 more testing and development, you are strongly advised to stick
 to microhttpd.h unless you are a MHD developer!
+
+For CHECKCBOX developmental use -->
+
+1) The below are the Initialization Commands under --> Settings > Build, Execution, Deployment > Makefile  
+./bootstrap
+./configure CC=/home/twinturbo/Desktop/CheckCBox_Compiler/llvm/cmake-build-debug/bin/clang --enable-build-type=debug --enable-sanitizers=address
