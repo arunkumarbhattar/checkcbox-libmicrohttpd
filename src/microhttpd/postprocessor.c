@@ -49,6 +49,7 @@ MHD_create_post_processor (struct MHD_Connection *connection,
   const char *boundary;
   size_t blen;
 
+  _TPtr<char> twin= NULL;
   if ( (buffer_size < 256) ||
        (NULL == connection) ||
        (NULL == iter))
@@ -274,6 +275,10 @@ process_value (struct MHD_PostProcessor *pp,
  * @param post_data_len number of bytes in @a post_data
  * @return #MHD_YES on success, #MHD_NO if there was an error processing the data
  */
+ /*
+  * There was a buffer overflow issue within this function.
+  * First Question --> What is it gonna take to encapsulate this function in a sandbox region
+  */
 static enum MHD_Result
 post_process_urlencoded (struct MHD_PostProcessor *pp,
                          const char *post_data,
@@ -456,8 +461,12 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
         mhd_assert (end_key >= start_key);
         if (0 != key_len)
         {
-          if ( (pp->buffer_pos + key_len >= pp->buffer_size) ||
-               (pp->buffer_pos + key_len < pp->buffer_pos) )
+//          if ( (pp->buffer_pos + key_len >= pp->buffer_size) ||
+//               (pp->buffer_pos + key_len < pp->buffer_pos) ) -->LATEST FIXED VERSION
+            if ( (pp->buffer_pos + (end_key - start_key) > // --> BUGGY VERSION
+                      pp->buffer_size) ||
+                     (pp->buffer_pos + (end_key - start_key) <
+                      pp->buffer_pos) )
           {
             /* key too long, cannot parse! */
             pp->state = PP_Error;
@@ -528,14 +537,14 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
     mhd_assert ((PP_ProcessKey == pp->state) || (NULL != end_key));
     if (NULL == end_key)
       end_key = &post_data[poff];
-    mhd_assert (end_key >= start_key);
-    key_len = (size_t) (end_key - start_key);
-    mhd_assert (0 != key_len); /* it must be always non-zero here */
-    if (pp->buffer_pos + key_len >= pp->buffer_size)
-    {
-      pp->state = PP_Error;
-      return MHD_NO;
-    }
+//    mhd_assert (end_key >= start_key);
+//    key_len = (size_t) (end_key - start_key);
+//    mhd_assert (0 != key_len); /* it must be always non-zero here */
+//    if (pp->buffer_pos + key_len >= pp->buffer_size)
+//    {
+//      pp->state = PP_Error;
+//      return MHD_NO;
+//    } --> OVERFLOW FIXED VERSION
     memcpy (&kbuf[pp->buffer_pos],
             start_key,
             key_len);
@@ -566,11 +575,11 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
                    last_escape);
     pp->must_ikvi = false;
   }
-  if (PP_Error == pp->state)
-  {
-    /* State in error, returning failure */
-    return MHD_NO;
-  }
+//  if (PP_Error == pp->state)
+//  {
+//    /* State in error, returning failure */
+//    return MHD_NO;
+//  } --> BUGFIX VERSION
   return MHD_YES;
 }
 
