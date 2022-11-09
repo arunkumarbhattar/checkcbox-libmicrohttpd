@@ -28,7 +28,7 @@ print_out_key (void *cls, enum MHD_ValueKind kind, const char *key,
 static enum MHD_Result
 answer_to_connection (void *cls, struct MHD_Connection *connection,
                       const char *url, const char *method,
-                      const char *version, const char *upload_data,
+                      const char *version, _TPtr<const char> upload_data,
                       size_t *upload_data_size, void **req_cls)
 {
   (void) cls;               /* Unused. Silent compiler warning. */

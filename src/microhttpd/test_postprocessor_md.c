@@ -38,6 +38,7 @@
 #include "internal.c"
 #endif
 
+#include <checkcbox_extensions.h>
 
 #define DEBUG 0
 
@@ -253,12 +254,12 @@ main (int argc, char *argv[])
     postprocessor->buffer_size = 0x1000;
     postprocessor->state = PP_Init;
     postprocessor->skip_rn = RN_Inactive;
-    if (MHD_YES != MHD_post_process (postprocessor, "xxxx=xxxx", 9))
+    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor("xxxx=xxxx"), 9))
       exit (1);
-    if (MHD_YES != MHD_post_process (postprocessor, "&yyyy=yyyy&zzzz=&aaaa=",
+    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor("&yyyy=yyyy&zzzz=&aaaa="),
                                      22))
       exit (1);
-    if (MHD_YES != MHD_post_process (postprocessor, "", 0))
+    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor(""), 0))
       exit (1);
     if (MHD_YES !=
         MHD_destroy_post_processor (postprocessor))
@@ -281,11 +282,11 @@ main (int argc, char *argv[])
     postprocessor->buffer_size = 0x1000;
     postprocessor->state = PP_Init;
     postprocessor->skip_rn = RN_Inactive;
-    if (MHD_YES != MHD_post_process (postprocessor, "text=text%2", 11))
+    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor("text=text%2"), 11))
       exit (1);
-    if (MHD_YES != MHD_post_process (postprocessor, "C+text", 6))
+    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor("C+text"), 6))
       exit (1);
-    if (MHD_YES != MHD_post_process (postprocessor, "", 0))
+    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor(""), 0))
       exit (1);
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
       exit (1);
@@ -505,10 +506,10 @@ main (int argc, char *argv[])
         "2C%2C%2Cxxxxxxxxx%2Cxxxxxxxx%2C"
         "&y=y&z=z";
 
-      if (MHD_YES != MHD_post_process (postprocessor, chunk, strlen (chunk) ))
+      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk), strlen (chunk) ))
         exit (1);
     }
-    if (MHD_YES != MHD_post_process (postprocessor, "", 0))
+    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor(""), 0))
       exit (1);
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
       exit (1);
@@ -683,7 +684,7 @@ main (int argc, char *argv[])
     for (unsigned i = 0; i < ARRAY_LENGTH (chunks); ++i)
     {
       const char *chunk = chunks[i];
-      if (MHD_YES != MHD_post_process (postprocessor, chunk, strlen (chunk) ))
+      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk), strlen (chunk) ))
         exit (1);
     }
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
@@ -719,7 +720,7 @@ main (int argc, char *argv[])
     for (unsigned i = 0; i < ARRAY_LENGTH (chunks); ++i)
     {
       const char *chunk = chunks[i];
-      if (MHD_YES != MHD_post_process (postprocessor, chunk, strlen (chunk) ))
+      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk), strlen (chunk) ))
         exit (1);
     }
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
@@ -728,6 +729,6 @@ main (int argc, char *argv[])
       return 7;
   }
 
-
+  t_free(GlobalTaintedAdaptorStr);
   return EXIT_SUCCESS;
 }

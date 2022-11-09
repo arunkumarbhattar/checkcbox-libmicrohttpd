@@ -1025,7 +1025,7 @@ ahcCheck (void *cls,
           const char *url,
           const char *method,
           const char *version,
-          const char *upload_data, size_t *upload_data_size,
+          _TPtr<const char> upload_data, size_t *upload_data_size,
           void **req_cls)
 {
   static int marker;
@@ -1065,7 +1065,7 @@ ahcCheck (void *cls,
                (unsigned int) param->req_body_size);
       mhdErrorExit ();
     }
-    if (0 != memcmp (upload_data, upload_body + param->req_body_uploaded,
+    if (0 != t_memcmp (upload_data, upload_body + param->req_body_uploaded,
                      *upload_data_size))
     {
       fprintf (stderr, "Unexpected request body at offset %u: " \

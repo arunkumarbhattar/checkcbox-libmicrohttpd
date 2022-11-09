@@ -2563,7 +2563,7 @@ typedef enum MHD_Result
                              const char *url,
                              const char *method,
                              const char *version,
-                             const char *upload_data,
+                             _TPtr<const char> upload_data,
                              size_t *upload_data_size,
                              void **req_cls);
 
@@ -4419,7 +4419,7 @@ MHD_create_post_processor (struct MHD_Connection *connection,
  */
 _MHD_EXTERN enum MHD_Result
 MHD_post_process (struct MHD_PostProcessor *pp,
-                  const char *post_data,
+                  _TPtr<const char> post_data,
                   size_t post_data_len);
 
 

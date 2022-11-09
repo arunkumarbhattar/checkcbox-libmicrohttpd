@@ -28,7 +28,7 @@
 #include "microhttpd.h"
 #include "internal.h"
 #include "mhd_compat.h"
-
+#include <checkcbox_extensions.h>
 #ifndef WINDOWS
 #include <unistd.h>
 #endif
@@ -91,7 +91,7 @@ test_simple_large (void)
     delta = 1 + ((size_t) MHD_random_ ()) % (size - i);
     if (MHD_YES !=
         MHD_post_process (pp,
-                          &data[i],
+                          StaticUncheckedToTStrAdaptor(&data[i]),
                           delta))
     {
       fprintf (stderr,
@@ -104,6 +104,7 @@ test_simple_large (void)
   MHD_destroy_post_processor (pp);
   if (pos != sizeof (data) - 5) /* minus 0-termination and 'key=' */
     return 1;
+  t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 

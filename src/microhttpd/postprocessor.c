@@ -29,6 +29,8 @@
 #include "mhd_str.h"
 #include "mhd_compat.h"
 #include "mhd_assert.h"
+#include <checkcbox_extensions.h>
+#include <string_tainted.h>
 
 /**
  * Size of on-stack buffer that we use for un-escaping of the value.
@@ -135,9 +137,9 @@ MHD_create_post_processor (struct MHD_Connection *connection,
  */
 static void
 process_value (struct MHD_PostProcessor *pp,
-               const char *value_start,
-               const char *value_end,
-               const char *last_escape)
+               _TPtr<const char> value_start,
+               _TPtr<const char> value_end,
+               _TPtr<const char> last_escape)
 {
   char xbuf[XBUF_SIZE + 1];
   size_t xoff;
@@ -159,7 +161,7 @@ process_value (struct MHD_PostProcessor *pp,
   {
     mhd_assert (value_end >= last_escape);
     pp->xbuf_pos = (size_t) (value_end - last_escape);
-    memcpy (pp->xbuf,
+    t_memcpy (pp->xbuf,
             last_escape,
             (size_t) (value_end - last_escape));
     value_end = last_escape;
@@ -179,7 +181,7 @@ process_value (struct MHD_PostProcessor *pp,
     /* move (additional) input into processing buffer */
     if (0 != delta)
     {
-      memcpy (&xbuf[xoff],
+      t_memcpy (&xbuf[xoff],
               value_start,
               delta);
       xoff += delta;
@@ -281,16 +283,16 @@ process_value (struct MHD_PostProcessor *pp,
   */
 static enum MHD_Result
 post_process_urlencoded (struct MHD_PostProcessor *pp,
-                         const char *post_data,
+                         _TPtr<const char> post_data,
                          size_t post_data_len)
 {
   char *kbuf = (char *) &pp[1];
   size_t poff;
-  const char *start_key = NULL;
-  const char *end_key = NULL;
-  const char *start_value = NULL;
-  const char *end_value = NULL;
-  const char *last_escape = NULL;
+  _TPtr<const char> start_key = NULL;
+  _TPtr<const char> end_key = NULL;
+  _TPtr<const char> start_value = NULL;
+  _TPtr<const char> end_value = NULL;
+  _TPtr<const char> last_escape = NULL;
 
   mhd_assert (PP_Callback != pp->state);
 
@@ -473,7 +475,7 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
             continue;
           }
           /* compute key, if we have not already */
-          memcpy (&kbuf[pp->buffer_pos],
+          t_memcpy (&kbuf[pp->buffer_pos],
                   start_key,
                   key_len);
           pp->buffer_pos += key_len;
@@ -545,7 +547,7 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
 //      pp->state = PP_Error;
 //      return MHD_NO;
 //    } --> OVERFLOW FIXED VERSION
-    memcpy (&kbuf[pp->buffer_pos],
+    t_memcpy (&kbuf[pp->buffer_pos],
             start_key,
             key_len);
     pp->buffer_pos += key_len;
@@ -963,7 +965,7 @@ free_unmarked (struct MHD_PostProcessor *pp)
  */
 static enum MHD_Result
 post_process_multipart (struct MHD_PostProcessor *pp,
-                        const char *post_data,
+                        _TPtr<const char> post_data,
                         size_t post_data_len)
 {
   char *buf;
@@ -985,7 +987,7 @@ post_process_multipart (struct MHD_PostProcessor *pp,
     max = pp->buffer_size - pp->buffer_pos;
     if (max > post_data_len - poff)
       max = post_data_len - poff;
-    memcpy (&buf[pp->buffer_pos],
+    t_memcpy (&buf[pp->buffer_pos],
             &post_data[poff],
             max);
     poff += max;
@@ -1273,7 +1275,7 @@ END:
 
 _MHD_EXTERN enum MHD_Result
 MHD_post_process (struct MHD_PostProcessor *pp,
-                  const char *post_data,
+                  _TPtr<const char> post_data,
                   size_t post_data_len)
 {
   if (0 == post_data_len)
@@ -1312,7 +1314,7 @@ MHD_destroy_post_processor (struct MHD_PostProcessor *pp)
        buffer; fake receiving a termination character to
        ensure it is also processed */
     post_process_urlencoded (pp,
-                             "\n",
+                             StaticCheckedToTStrAdaptor("\n"),
                              1);
   }
   /* These internal strings need cleaning up since
@@ -1329,6 +1331,7 @@ MHD_destroy_post_processor (struct MHD_PostProcessor *pp)
   if (NULL != pp->nested_boundary)
     free (pp->nested_boundary);
   free (pp);
+  t_free(GlobalTaintedAdaptorStr);
   return ret;
 }
 

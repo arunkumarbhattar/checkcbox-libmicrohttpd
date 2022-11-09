@@ -320,8 +320,8 @@ MHD_strx_to_uint64_ (const char *str,
  *         zero if no digit is found, resulting value is larger
  *         then possible to store in uint64_t or @a out_val is NULL
  */
-size_t
-MHD_strx_to_uint64_n_ (const char *str,
+_TLIB size_t
+MHD_strx_to_uint64_n_ (const char* str : itype(_TPtr<const char>),
                        size_t maxlen,
                        uint64_t *out_val);
 

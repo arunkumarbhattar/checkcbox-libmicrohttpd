@@ -51,7 +51,7 @@ ahc_echo (void *cls,
           const char *url,
           const char *method,
           const char *version,
-          const char *upload_data, size_t *upload_data_size, void **req_cls)
+          _TPtr<const char> upload_data, size_t *upload_data_size, void **req_cls)
 {
   struct MHD_Response *response;
   enum MHD_Result ret;
