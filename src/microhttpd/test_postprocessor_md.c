@@ -506,7 +506,7 @@ main (int argc, char *argv[])
         "2C%2C%2Cxxxxxxxxx%2Cxxxxxxxx%2C"
         "&y=y&z=z";
 
-      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk), strlen (chunk) ))
+      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk, strlen (chunk)), strlen (chunk) ))
         exit (1);
     }
     if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor(""), 0))
@@ -684,7 +684,7 @@ main (int argc, char *argv[])
     for (unsigned i = 0; i < ARRAY_LENGTH (chunks); ++i)
     {
       const char *chunk = chunks[i];
-      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk), strlen (chunk) ))
+      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk, strlen (chunk)), strlen (chunk) ))
         exit (1);
     }
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
@@ -720,7 +720,7 @@ main (int argc, char *argv[])
     for (unsigned i = 0; i < ARRAY_LENGTH (chunks); ++i)
     {
       const char *chunk = chunks[i];
-      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk), strlen (chunk) ))
+      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk, strlen (chunk)), strlen (chunk) ))
         exit (1);
     }
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))

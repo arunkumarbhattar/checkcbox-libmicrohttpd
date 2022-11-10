@@ -540,7 +540,7 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
     if (NULL == end_key)
       end_key = &post_data[poff];
 //    mhd_assert (end_key >= start_key);
-//    key_len = (size_t) (end_key - start_key);
+    key_len = (size_t) (end_key - start_key);
 //    mhd_assert (0 != key_len); /* it must be always non-zero here */
 //    if (pp->buffer_pos + key_len >= pp->buffer_size)
 //    {
@@ -1314,7 +1314,7 @@ MHD_destroy_post_processor (struct MHD_PostProcessor *pp)
        buffer; fake receiving a termination character to
        ensure it is also processed */
     post_process_urlencoded (pp,
-                             StaticCheckedToTStrAdaptor("\n"),
+                             StaticUncheckedToTStrAdaptor("\n",1),
                              1);
   }
   /* These internal strings need cleaning up since
@@ -1331,7 +1331,6 @@ MHD_destroy_post_processor (struct MHD_PostProcessor *pp)
   if (NULL != pp->nested_boundary)
     free (pp->nested_boundary);
   free (pp);
-  t_free(GlobalTaintedAdaptorStr);
   return ret;
 }
 

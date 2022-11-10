@@ -91,7 +91,7 @@ test_simple_large (void)
     delta = 1 + ((size_t) MHD_random_ ()) % (size - i);
     if (MHD_YES !=
         MHD_post_process (pp,
-                          StaticUncheckedToTStrAdaptor(&data[i]),
+                          StaticUncheckedToTStrAdaptor(&data[i], delta),
                           delta))
     {
       fprintf (stderr,

@@ -93,7 +93,7 @@ main (int argc, char *const *argv)
   if (NULL == pp)
     return 1;
 
-  if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(post), strlen (post)))
+  if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(post, strlen (post)), strlen (post)))
     num_errors++;
   MHD_destroy_post_processor (pp);
 
