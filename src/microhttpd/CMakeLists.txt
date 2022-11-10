@@ -7,7 +7,7 @@ project(testBench)
 add_compile_options( -fPIC -g )
 
 add_link_options(-ldl -lstdc++)
-add_executable(testBench "${CMAKE_SOURCE_DIR}/test_client_put_stop.c")
+add_executable(testBench "${CMAKE_SOURCE_DIR}/test_postprocessor.c")
 target_include_directories(testBench PUBLIC "${CMAKE_SOURCE_DIR}/../include"
         "${CMAKE_SOURCE_DIR}/../../")
 target_link_libraries(testBench
