@@ -1,3 +1,57 @@
+CheckCBox 
+
+CheckCBox is a C-Extension built on top of the Checked-C Clang compiler that provides users with 
+new pointer types and a set of compiler annotations to achieve
+1.) Program partitioning
+2.) Stack/Heap Protection
+3.) All Safety Guarantees provided by WebAssembly
+
+LibMicroHttpd has the following interesting (overflows) CVEs -->
+================================================================
+CVE-2021-3466 https://www.cvedetails.com/cve/CVE-2021-3466/
+
+Description:
+A flaw was found in libmicrohttpd. A missing bounds check in the post_process_urlencoded function leads
+to a buffer overflow, allowing a remote attacker to write arbitrary data in an application that uses libmicrohttpd. 
+The highest threat from this vulnerability is to data confidentiality and integrity as well as system availability.
+Only version 0.9.70 is vulnerable.
+
+Issue Reproduction -->
+Running Tests with Address Sanitizer shows buffer overflow with the changes (FIX) undone.
+
+Root Cause -->
+struct MHD_PostProcessor *pp is being overflowed in the function post_process_urlencoded 
+        char *kbuf = (char *) &pp[1];
+        t_memcpy (&kbuf[pp->buffer_pos], --> Site of overflow 
+                  start_key,
+                  key_len);
+  
+
+CheckCBox Solution --> 
+This would require "struct MHD_PostProcessor *pp" --> To be moved to Sandbox region (i,e Tainted pointer)
+--> However Tainted Pointers Can ONLY point to Tstruct, Requiring MHD_PostProcessor --> Also to be made a Tstruct (which in
+turn requires all member pointers to be tainted)
+The above "decision" has the following constraints -->
+
+1.) Requires Considerable changes (all Tstruct pointer members must be tainted)
+2.) Requires Re-ordering Struct members to move (indirection) confidential members outside Tstruct region
+================================================================
+CVE-2013-7039
+
+Description:
+Stack-based buffer overflow in the MHD_digest_auth_check function in libmicrohttpd before 0.9.32, 
+when MHD_OPTION_CONNECTION_MEMORY_LIMIT is set to a large value, allows remote attackers to cause a denial of service (crash)
+or possibly execute arbitrary code via a long URI in an authentication header.
+
+Root Cause:
+Not known. No commit showing fix for the above vulnerability
+
+Changes Made --> 
+Since MHD_digest_auth_check accepts user data (Authentication Headers)--> realm, username, password --> 
+All these three fields have been moved to the tainted region
+https://github.com/arunkumarbhattar/checkcbox-libmicrohttpd/commit/48fd5252a31a84efc193fa2bec2d99dd34b8f4d9 
+================================================================
+
 About
 =====
 
