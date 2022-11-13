@@ -48,7 +48,7 @@
 #include "mhd_compat.h"
 #include "mhd_bithelpers.h"
 #include "mhd_assert.h"
-
+#include <checkcbox_extensions.h>
 
 /**
  * Allow re-use of the nonce-nc map array slot after #REUSE_TIMEOUT seconds,
@@ -2446,16 +2446,16 @@ get_unquoted_param_copy (const struct MHD_RqDAuthParam *param,
  */
 _MHD_static_inline bool
 is_param_equal (const struct MHD_RqDAuthParam *param,
-                const char *const str,
+                const _TPtr<char const> str,
                 const size_t str_len)
 {
   mhd_assert (NULL != param->value.str);
   mhd_assert (0 != param->value.len);
   if (param->quoted)
-    return MHD_str_equal_quoted_bin_n (param->value.str, param->value.len,
+    return MHD_str_equal_quoted_bin_n (StaticUncheckedToTStrAdaptor(param->value.str, param->value.len), param->value.len,
                                        str, str_len);
   return (str_len == param->value.len) &&
-         (0 == memcmp (str, param->value.str, str_len));
+         (0 == t_memcmp (str, param->value.str, str_len));
 
 }
 
@@ -2470,16 +2470,16 @@ is_param_equal (const struct MHD_RqDAuthParam *param,
  */
 _MHD_static_inline bool
 is_param_equal_caseless (const struct MHD_RqDAuthParam *param,
-                         const char *const str,
+                         const _TPtr<const char> str,
                          const size_t str_len)
 {
   mhd_assert (NULL != param->value.str);
   mhd_assert (0 != param->value.len);
   if (param->quoted)
-    return MHD_str_equal_quoted_bin_n (param->value.str, param->value.len,
+    return MHD_str_equal_quoted_bin_n (StaticUncheckedToTStrAdaptor(param->value.str, param->value.len), param->value.len,
                                        str, str_len);
   return (str_len == param->value.len) &&
-         (0 == memcmp (str, param->value.str, str_len));
+         (0 == t_memcmp (str, param->value.str, str_len));
 
 }
 
@@ -2518,9 +2518,9 @@ is_param_equal_caseless (const struct MHD_RqDAuthParam *param,
  */
 static enum MHD_DigestAuthResult
 digest_auth_check_all_inner (struct MHD_Connection *connection,
-                             const char *realm,
-                             const char *username,
-                             const char *password,
+                             _TPtr<const char> realm,
+                             _TPtr<const char> username,
+                             _TPtr<const char> password,
                              const uint8_t *userdigest,
                              unsigned int nonce_timeout,
                              uint32_t max_nc,
@@ -2708,13 +2708,13 @@ digest_auth_check_all_inner (struct MHD_Connection *connection,
   /* 'qop' valid */
 
   /* Check 'realm' */
-  realm_len = strlen (realm);
+  realm_len = t_strlen (realm);
   if (! is_param_equal (&params->realm, realm, realm_len))
     return MHD_DAUTH_WRONG_REALM;
   /* 'realm' valid */
 
   /* Check 'username' */
-  username_len = strlen (username);
+  username_len = t_strlen (username);
   if (! params->userhash)
   {
     if (NULL != params->username.value.str)
@@ -2742,21 +2742,25 @@ digest_auth_check_all_inner (struct MHD_Connection *connection,
       if (0 > res)
         return MHD_DAUTH_WRONG_HEADER; /* Broken extended notation */
       if ((username_len != (size_t) res) ||
-          (0 != memcmp (username, r_uname, username_len)))
-        return MHD_DAUTH_WRONG_USERNAME;
+          (0 != t_memcmp (username, StaticUncheckedToTStrAdaptor(r_uname, username_len), username_len)))
+      {
+          if(GlobalTaintedAdaptorStr!=NULL)
+              t_free(GlobalTaintedAdaptorStr);
+          return MHD_DAUTH_WRONG_USERNAME;
+      }
     }
   }
   else
   { /* Userhash */
     mhd_assert (NULL != params->username.value.str);
-    calc_userhash (da, username, username_len, realm, realm_len, hash1_bin);
+    calc_userhash (da, (const char*) TaintedToCheckedStrAdaptor(username, username_len), username_len, (const char*) TaintedToCheckedStrAdaptor(realm, realm_len), realm_len, hash1_bin);
 #ifdef MHD_DIGEST_HAS_EXT_ERROR
     if (digest_ext_error (da))
       return MHD_DAUTH_ERROR;
 #endif /* MHD_DIGEST_HAS_EXT_ERROR */
     mhd_assert (sizeof (tmp1) >= (2 * digest_size));
     MHD_bin_to_hex (hash1_bin, digest_size, tmp1);
-    if (! is_param_equal_caseless (&params->username, tmp1, 2 * digest_size))
+    if (! is_param_equal_caseless (&params->username, StaticUncheckedToTStrAdaptor(tmp1, _MHD_STATIC_UNQ_BUFFER_SIZE), 2 * digest_size))
       return MHD_DAUTH_WRONG_USERNAME;
     /* To simplify the logic, the digest is reset here instead of resetting
        before the next hash calculation. */
@@ -2903,9 +2907,9 @@ digest_auth_check_all_inner (struct MHD_Connection *connection,
     mhd_assert (! da->hashing);
     digest_reset (da);
     calc_userdigest (da,
-                     username, username_len,
-                     realm, realm_len,
-                     password,
+                     (const char*) TaintedToCheckedStrAdaptor(username, username_len), username_len,
+                     (const char*) TaintedToCheckedStrAdaptor(realm, realm_len), realm_len,
+                     (const char*) TaintedToCheckedStrAdaptor(password, t_strlen(password)),
                      hash1_bin);
   }
   /* TODO: support '-sess' versions */
@@ -3005,7 +3009,7 @@ digest_auth_check_all_inner (struct MHD_Connection *connection,
                      connection->rq.url,
                      connection->rq.url_len,
                      connection->rq.headers_received,
-                     realm,
+                     (const char*)TaintedToCheckedStrAdaptor(realm, realm_len),
                      realm_len,
                      daemon->dauth_bind_type,
                      da,
@@ -3016,12 +3020,13 @@ digest_auth_check_all_inner (struct MHD_Connection *connection,
       return MHD_DAUTH_ERROR;
 #endif /* MHD_DIGEST_HAS_EXT_ERROR */
 
-    if (! is_param_equal (&params->nonce, tmp1,
+    if (! is_param_equal (&params->nonce, StaticUncheckedToTStrAdaptor(tmp1, _MHD_STATIC_UNQ_BUFFER_SIZE) ,
                           NONCE_STD_LEN (digest_size)))
       return MHD_DAUTH_NONCE_OTHER_COND;
     /* The 'nonce' was generated in the same conditions */
   }
-
+  if (GlobalTaintedAdaptorStr!= NULL)
+      t_free(GlobalTaintedAdaptorStr);
   return MHD_DAUTH_OK;
 }
 
@@ -3058,9 +3063,9 @@ digest_auth_check_all_inner (struct MHD_Connection *connection,
  */
 static enum MHD_DigestAuthResult
 digest_auth_check_all (struct MHD_Connection *connection,
-                       const char *realm,
-                       const char *username,
-                       const char *password,
+                       _TPtr<const char> realm,
+                       _TPtr<const char> username,
+                       _TPtr<const char> password,
                        const uint8_t *userdigest,
                        unsigned int nonce_timeout,
                        uint32_t max_nc,
@@ -3106,9 +3111,9 @@ digest_auth_check_all (struct MHD_Connection *connection,
  */
 _MHD_EXTERN int
 MHD_digest_auth_check (struct MHD_Connection *connection,
-                       const char *realm,
-                       const char *username,
-                       const char *password,
+                       _TPtr<const char> realm,
+                       _TPtr<const char> username,
+                       _TPtr<const char> password,
                        unsigned int nonce_timeout)
 {
   return MHD_digest_auth_check2 (connection,
@@ -3151,9 +3156,9 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
  */
 _MHD_EXTERN enum MHD_DigestAuthResult
 MHD_digest_auth_check3 (struct MHD_Connection *connection,
-                        const char *realm,
-                        const char *username,
-                        const char *password,
+                        _TPtr<const char> realm,
+                        _TPtr<const char> username,
+                        _TPtr<const char> password,
                         unsigned int nonce_timeout,
                         uint32_t max_nc,
                         enum MHD_DigestAuthMultiQOP mqop,
@@ -3216,8 +3221,8 @@ MHD_digest_auth_check3 (struct MHD_Connection *connection,
  */
 _MHD_EXTERN enum MHD_DigestAuthResult
 MHD_digest_auth_check_digest3 (struct MHD_Connection *connection,
-                               const char *realm,
-                               const char *username,
+                               _TPtr<const char> realm,
+                               _TPtr<const char> username,
                                const void *userdigest,
                                size_t userdigest_size,
                                unsigned int nonce_timeout,
@@ -3300,9 +3305,9 @@ MHD_digest_auth_check_digest3 (struct MHD_Connection *connection,
  */
 _MHD_EXTERN int
 MHD_digest_auth_check2 (struct MHD_Connection *connection,
-                        const char *realm,
-                        const char *username,
-                        const char *password,
+                        _TPtr<const char> realm,
+                        _TPtr<const char> username,
+                        _TPtr<const char> password,
                         unsigned int nonce_timeout,
                         enum MHD_DigestAuthAlgorithm algo)
 {
@@ -3356,8 +3361,8 @@ MHD_digest_auth_check2 (struct MHD_Connection *connection,
  */
 _MHD_EXTERN int
 MHD_digest_auth_check_digest2 (struct MHD_Connection *connection,
-                               const char *realm,
-                               const char *username,
+                               _TPtr<const char> realm,
+                               _TPtr<const char> username,
                                const uint8_t *digest,
                                size_t digest_size,
                                unsigned int nonce_timeout,
@@ -3413,8 +3418,8 @@ MHD_digest_auth_check_digest2 (struct MHD_Connection *connection,
  */
 _MHD_EXTERN int
 MHD_digest_auth_check_digest (struct MHD_Connection *connection,
-                              const char *realm,
-                              const char *username,
+                              _TPtr<const char> realm,
+                              _TPtr<const char> username,
                               const uint8_t digest[MHD_MD5_DIGEST_SIZE],
                               unsigned int nonce_timeout)
 {

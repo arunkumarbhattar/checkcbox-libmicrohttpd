@@ -5283,9 +5283,9 @@ enum MHD_DigestAuthResult
  */
 _MHD_EXTERN enum MHD_DigestAuthResult
 MHD_digest_auth_check3 (struct MHD_Connection *connection,
-                        const char *realm,
-                        const char *username,
-                        const char *password,
+                        _TPtr<const char> realm,
+                        _TPtr<const char> username,
+                        _TPtr<const char> password,
                         unsigned int nonce_timeout,
                         uint32_t max_nc,
                         enum MHD_DigestAuthMultiQOP mqop,
@@ -5377,8 +5377,8 @@ MHD_digest_auth_calc_userdigest (enum MHD_DigestAuthAlgo3 algo3,
  */
 _MHD_EXTERN enum MHD_DigestAuthResult
 MHD_digest_auth_check_digest3 (struct MHD_Connection *connection,
-                               const char *realm,
-                               const char *username,
+                               _TPtr<const char> realm,
+                               _TPtr<const char> username,
                                const void *userdigest,
                                size_t userdigest_size,
                                unsigned int nonce_timeout,
@@ -5537,9 +5537,9 @@ enum MHD_DigestAuthAlgorithm
  */
 _MHD_EXTERN int
 MHD_digest_auth_check2 (struct MHD_Connection *connection,
-                        const char *realm,
-                        const char *username,
-                        const char *password,
+                        _TPtr<const char> realm,
+                        _TPtr<const char> username,
+                        _TPtr<const char> password,
                         unsigned int nonce_timeout,
                         enum MHD_DigestAuthAlgorithm algo);
 
@@ -5564,9 +5564,9 @@ MHD_digest_auth_check2 (struct MHD_Connection *connection,
  */
 _MHD_EXTERN int
 MHD_digest_auth_check (struct MHD_Connection *connection,
-                       const char *realm,
-                       const char *username,
-                       const char *password,
+                       _TPtr<const char> realm,
+                       _TPtr<const char> username,
+                       _TPtr<const char> password,
                        unsigned int nonce_timeout);
 
 
@@ -5591,8 +5591,8 @@ MHD_digest_auth_check (struct MHD_Connection *connection,
  */
 _MHD_EXTERN int
 MHD_digest_auth_check_digest2 (struct MHD_Connection *connection,
-                               const char *realm,
-                               const char *username,
+                               _TPtr<const char> realm,
+                               _TPtr<const char> username,
                                const uint8_t *digest,
                                size_t digest_size,
                                unsigned int nonce_timeout,
@@ -5620,8 +5620,8 @@ MHD_digest_auth_check_digest2 (struct MHD_Connection *connection,
  */
 _MHD_EXTERN int
 MHD_digest_auth_check_digest (struct MHD_Connection *connection,
-                              const char *realm,
-                              const char *username,
+                              _TPtr<const char> realm,
+                              _TPtr<const char> username,
                               const uint8_t digest[MHD_MD5_DIGEST_SIZE],
                               unsigned int nonce_timeout);
 

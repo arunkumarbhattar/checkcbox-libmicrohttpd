@@ -620,9 +620,9 @@ MHD_str_pct_decode_in_place_lenient_ (char *str,
  *         first string.
  */
 bool
-MHD_str_equal_quoted_bin_n (const char *quoted,
+MHD_str_equal_quoted_bin_n (_TPtr<const char> quoted,
                             size_t quoted_len,
-                            const char *unquoted,
+                                    _TPtr<const char> unquoted,
                             size_t unquoted_len);
 
 /**

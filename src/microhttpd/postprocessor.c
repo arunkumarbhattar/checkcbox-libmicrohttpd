@@ -1331,8 +1331,6 @@ MHD_destroy_post_processor (struct MHD_PostProcessor *pp)
   if (NULL != pp->nested_boundary)
     free (pp->nested_boundary);
   free (pp);
-  if (GlobalTaintedAdaptorStr != 0x0)
-    t_free(GlobalTaintedAdaptorStr);
   return ret;
 }
 
