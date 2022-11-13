@@ -1,3 +1,0 @@
-/home/twinturbo/Desktop/ExtraSpace/checkcbox-libmicrohttpd/src/microhttpd/cmake-build-debug/CMakeFiles/testBench.dir
-/home/twinturbo/Desktop/ExtraSpace/checkcbox-libmicrohttpd/src/microhttpd/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/twinturbo/Desktop/ExtraSpace/checkcbox-libmicrohttpd/src/microhttpd/cmake-build-debug/CMakeFiles/rebuild_cache.dir
