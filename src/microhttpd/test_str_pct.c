@@ -435,10 +435,14 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
       memcpy (buf, encoded, encoded_len);
       buf[encoded_len] = 0;
       _TPtr<char> _T_buf = (_TPtr<char>)t_malloc(1024*sizeof(char));
+      t_memset (_T_buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+      t_memcpy (_T_buf, encoded, encoded_len);
       t_strncpy(_T_buf, buf, encoded_len);
+      _T_buf[encoded_len] = 0;
       res_size = MHD_str_pct_decode_in_place_lenient_ (_T_buf, is_broken);
-      t_strncpy(buf,_T_buf, decoded_size);
+      t_strncpy(buf,_T_buf, res_size);
       t_free(_T_buf);
+      buf[res_size] = 0;
       if (res_size != decoded_size)
       {
         check_res = 1;
@@ -472,7 +476,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                    "Wrong 'broken_encoding' result:\n");
         }
         if ((res_size == decoded_size) && (0 != decoded_size) &&
-            (0 != memcmp (buf, decoded, decoded_size)))
+            (0 != t_memcmp (_T_buf, decoded, decoded_size)))
         {
           check_res = 1;
           fprintf (stderr,
@@ -957,10 +961,13 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
       memcpy (buf, encoded, encoded_len);
       buf[encoded_len] = 0;
       _TPtr<char> _T_buf = (_TPtr<char>)t_malloc(1024*sizeof(char));
-      t_strncpy(_T_buf, buf, encoded_len);
+      t_memset (_T_buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+      t_memcpy (_T_buf, encoded, encoded_len);
+      _T_buf[encoded_len] = 0;
       res_size = MHD_str_pct_decode_in_place_lenient_ (_T_buf, is_broken);
       t_strncpy(buf,_T_buf, decoded_size);
       t_free(_T_buf);
+      buf[res_size] = 0;
       if (res_size != decoded_size)
       {
         check_res = 1;
@@ -994,7 +1001,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                    "Wrong 'broken_encoding' result:\n");
         }
         if ((res_size == decoded_size) && (0 != decoded_size) &&
-            (0 != memcmp (buf, decoded, decoded_size)))
+            (0 != t_memcmp (_T_buf, decoded, decoded_size)))
         {
           check_res = 1;
           fprintf (stderr,
