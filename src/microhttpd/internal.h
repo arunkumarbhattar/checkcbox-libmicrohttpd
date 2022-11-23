@@ -1693,7 +1693,7 @@ typedef void *
 typedef size_t
 (*UnescapeCallback)(void *cls,
                     struct MHD_Connection *conn,
-                    char *uri);
+                    char* uri);
 
 
 /**

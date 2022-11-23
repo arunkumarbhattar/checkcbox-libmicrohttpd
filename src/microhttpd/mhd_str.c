@@ -1437,10 +1437,10 @@ MHD_hex_to_bin (const char *hex,
 }
 
 
-size_t
+_TLIB size_t
 MHD_str_pct_decode_strict_n_ (const char *pct_encoded,
                               size_t pct_encoded_len,
-                              char *decoded,
+                              char *decoded : itype(_TPtr<char>),
                               size_t buf_size)
 {
 #ifdef MHD_FAVOR_SMALL_CODE
@@ -1671,8 +1671,8 @@ MHD_str_pct_decode_in_place_strict_ (char *str)
 
 
 size_t
-MHD_str_pct_decode_in_place_lenient_ (char *str,
-                                      bool *broken_encoding)
+MHD_str_pct_decode_in_place_lenient_ (_TPtr<char> str,
+                                      _TPtr<bool> broken_encoding)
 {
 #ifdef MHD_FAVOR_SMALL_CODE
   size_t len;

@@ -27,6 +27,7 @@
  * @author Karlson2k (Evgeny Grin)
  */
 #include "platform.h"
+#include <stdlib_tainted.h>
 #if defined(MHD_USE_POSIX_THREADS) || defined(MHD_USE_W32_THREADS)
 #include "mhd_threads.h"
 #endif
@@ -5722,9 +5723,11 @@ MHD_polling_thread (void *cls)
 static size_t
 unescape_wrapper (void *cls,
                   struct MHD_Connection *connection,
-                  char *val)
+                  char* val)
 {
-  bool broken;
+  _TPtr<bool> broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+  _TPtr<char> _T_val = (_TPtr<char>)t_malloc(strlen(val)*sizeof(char));
+  t_strcpy(_T_val, val);
   size_t res;
   (void) cls; /* Mute compiler warning. */
 
@@ -5732,7 +5735,7 @@ unescape_wrapper (void *cls,
   if (1 <= connection->daemon->strict_for_client)
     return MHD_str_pct_decode_in_place_strict_ (val);
 
-  res = MHD_str_pct_decode_in_place_lenient_ (val, &broken);
+  res = MHD_str_pct_decode_in_place_lenient_ (_T_val, broken);
 #ifdef HAVE_MESSAGES
   if (broken)
   {

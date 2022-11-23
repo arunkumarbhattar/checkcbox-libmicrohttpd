@@ -145,7 +145,7 @@ MHD_unescape_plus (char *arg)
  *  shorter afterwards due to elimination of escape sequences)
  */
 _MHD_EXTERN size_t
-MHD_http_unescape (char *val)
+MHD_http_unescape (_TPtr<char> val)
 {
   return MHD_str_pct_decode_in_place_lenient_ (val, NULL);
 }
