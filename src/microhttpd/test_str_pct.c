@@ -28,7 +28,8 @@
 #include <stdio.h>
 #include "mhd_str.h"
 #include "mhd_assert.h"
-
+#include <string_tainted.h>
+#include <stdlib_tainted.h>
 #ifndef MHD_STATICSTR_LEN_
 /**
  * Determine length of static string / macro strings at compile time.
@@ -427,12 +428,17 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
     if (1)
     {
       unsigned int check_res = 0;
-      bool is_broken = true;
+      _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+      *is_broken = true;
 
       memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
       memcpy (buf, encoded, encoded_len);
       buf[encoded_len] = 0;
-      res_size = MHD_str_pct_decode_in_place_lenient_ (buf, &is_broken);
+      _TPtr<char> _T_buf = (_TPtr<char>)t_malloc(1024*sizeof(char));
+      t_strncpy(_T_buf, buf, encoded_len);
+      res_size = MHD_str_pct_decode_in_place_lenient_ (_T_buf, is_broken);
+      t_strncpy(buf,_T_buf, decoded_size);
+      t_free(_T_buf);
       if (res_size != decoded_size)
       {
         check_res = 1;
@@ -458,7 +464,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                    "'MHD_str_pct_decode_in_place_lenient_ ()' FAILED: "
                    "A char written outside the buffer:\n");
         }
-        if (is_broken)
+        if (*is_broken)
         {
           check_res = 1;
           fprintf (stderr,
@@ -482,7 +488,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                  "-> \"%s\", ->%s) -> %u\n",
                  n_prnt (encoded, encoded_len),
                  n_prnt (buf, res_size),
-                 is_broken ? "true" : "false",
+                 *is_broken ? "true" : "false",
                  (unsigned) res_size);
         fprintf (stderr,
                  "\tEXPECTED: MHD_str_pct_decode_in_place_lenient_ (\"%s\" "
@@ -944,12 +950,17 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
     if (1)
     {
       unsigned int check_res = 0;
-      bool is_broken = false;
+      _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+       *is_broken = false;
 
       memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
       memcpy (buf, encoded, encoded_len);
       buf[encoded_len] = 0;
-      res_size = MHD_str_pct_decode_in_place_lenient_ (buf, &is_broken);
+      _TPtr<char> _T_buf = (_TPtr<char>)t_malloc(1024*sizeof(char));
+      t_strncpy(_T_buf, buf, encoded_len);
+      res_size = MHD_str_pct_decode_in_place_lenient_ (_T_buf, is_broken);
+      t_strncpy(buf,_T_buf, decoded_size);
+      t_free(_T_buf);
       if (res_size != decoded_size)
       {
         check_res = 1;
@@ -975,7 +986,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                    "'MHD_str_pct_decode_in_place_lenient_ ()' FAILED: "
                    "A char written outside the buffer:\n");
         }
-        if (! is_broken)
+        if (! *is_broken)
         {
           check_res = 1;
           fprintf (stderr,
@@ -999,7 +1010,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                  "-> \"%s\", ->%s) -> %u\n",
                  n_prnt (encoded, encoded_len),
                  n_prnt (buf, res_size),
-                 is_broken ? "true" : "false",
+                 *is_broken ? "true" : "false",
                  (unsigned) res_size);
         fprintf (stderr,
                  "\tEXPECTED: MHD_str_pct_decode_in_place_lenient_ (\"%s\" "

@@ -596,8 +596,8 @@ MHD_str_pct_decode_in_place_strict_ (char *str);
  * @return the number of character in decoded string
  */
 size_t
-MHD_str_pct_decode_in_place_lenient_ (char *str,
-                                      bool *broken_encoding);
+MHD_str_pct_decode_in_place_lenient_ (_TPtr<char> str,
+                                      _TPtr<bool> broken_encoding);
 
 #ifdef DAUTH_SUPPORT
 /**

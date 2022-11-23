@@ -139,10 +139,10 @@ MHD_unescape_plus (char *arg)
  *  shorter afterwards due to elimination of escape sequences)
  */
 size_t
-MHD_http_unescape (char *val)
+MHD_http_unescape (_TPtr<char> val)
 {
-  char *rpos = val;
-  char *wpos = val;
+  _TPtr<char> rpos = val;
+    _TPtr<char> wpos = val;
 
   while ('\0' != *rpos)
   {
