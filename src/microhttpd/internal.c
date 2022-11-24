@@ -28,7 +28,7 @@
 
 #include "internal.h"
 #include "mhd_str.h"
-
+#include <string_tainted.h>
 #ifdef HAVE_MESSAGES
 #if DEBUG_STATES
 /**
@@ -134,6 +134,16 @@ MHD_unescape_plus (char *arg)
     *p = ' ';
 }
 
+void
+_T_MHD_unescape_plus (_TPtr<char> arg)
+{
+    _TPtr<char> p = NULL;
+
+    for (p = t_strchr (arg, '+'); NULL != p; p = t_strchr (p + 1, '+'))
+        *p = ' ';
+}
+
+
 
 /**
  * Process escape sequences ('%HH') Updates val in place; the
@@ -144,7 +154,7 @@ MHD_unescape_plus (char *arg)
  * @return length of the resulting val (`strlen(val)` may be
  *  shorter afterwards due to elimination of escape sequences)
  */
-_MHD_EXTERN size_t
+_MHD_EXTERN _Tainted size_t
 MHD_http_unescape (_TPtr<char> val)
 {
   return MHD_str_pct_decode_in_place_lenient_ (val, NULL);

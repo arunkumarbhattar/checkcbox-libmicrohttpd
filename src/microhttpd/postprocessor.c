@@ -237,7 +237,8 @@ process_value (struct MHD_PostProcessor *pp,
         _TPtr<char> _T_xbuf = t_malloc(strlen(xbuf)*sizeof(char));
         t_strcpy(_T_xbuf, xbuf);
         xoff = MHD_http_unescape (_T_xbuf);
-        t_strcpy(xbuf, _T_xbuf);
+        t_strncpy(xbuf, _T_xbuf,xoff);
+        xbuf[xoff] = '\0';
         t_free(_T_xbuf);
     }
     /* finally: call application! */
@@ -499,7 +500,9 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
           //since kbuf is NULL terminated, we can marshall it -->
           _TPtr<char> _T_kbuf = (_TPtr<char>)t_malloc(strlen(kbuf)*sizeof(char));
           t_strcpy(_T_kbuf, kbuf);
-          MHD_http_unescape (_T_kbuf);
+          int cpyLen = MHD_http_unescape (_T_kbuf);
+          t_strncpy(kbuf, _T_kbuf, cpyLen);
+          kbuf[cpyLen] = '\0';
           t_free(_T_kbuf);
         pp->must_unescape_key = false;
       }
@@ -573,8 +576,9 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
       MHD_unescape_plus (kbuf);
         _TPtr<char> _T_kbuf =  (_TPtr<char>)t_malloc(strlen(kbuf)*sizeof(char));
         t_strcpy(_T_kbuf, kbuf);
-        MHD_http_unescape (_T_kbuf);
-        t_strcpy(kbuf, _T_kbuf);
+        int cpyLen = MHD_http_unescape (_T_kbuf);
+        t_strncpy(kbuf, _T_kbuf, cpyLen);
+        kbuf[cpyLen] = '\0';
         t_free(_T_kbuf);
       pp->must_unescape_key = false;
     }

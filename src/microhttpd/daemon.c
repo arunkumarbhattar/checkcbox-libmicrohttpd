@@ -27,6 +27,7 @@
  * @author Karlson2k (Evgeny Grin)
  */
 #include "platform.h"
+#include <string_tainted.h>
 #include <stdlib_tainted.h>
 #if defined(MHD_USE_POSIX_THREADS) || defined(MHD_USE_W32_THREADS)
 #include "mhd_threads.h"
@@ -5732,9 +5733,11 @@ unescape_wrapper (void *cls,
   (void) cls; /* Mute compiler warning. */
 
   /* TODO: add individual parameter */
-  if (1 <= connection->daemon->strict_for_client)
-    return MHD_str_pct_decode_in_place_strict_ (val);
-
+  if (1 <= connection->daemon->strict_for_client) {
+      size_t res = MHD_str_pct_decode_in_place_strict_(_T_val);
+      t_strncpy(val, _T_val, res);
+      return res;
+  }
   res = MHD_str_pct_decode_in_place_lenient_ (_T_val, broken);
 #ifdef HAVE_MESSAGES
   if (broken)
@@ -5743,6 +5746,7 @@ unescape_wrapper (void *cls,
               _ ("The URL encoding is broken.\n"));
   }
 #endif /* HAVE_MESSAGES */
+  t_strncpy(val, _T_val, res);
   return res;
 }
 

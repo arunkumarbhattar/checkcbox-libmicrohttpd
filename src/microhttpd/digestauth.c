@@ -1074,9 +1074,13 @@ get_rq_extended_uname_copy_z (const char *uname_ext, size_t uname_ext_len,
   if (r >= uname_ext_len)
     return -1; /* The end of the language tag was not found */
   r++; /* Advance to the next char */
-
-  w = MHD_str_pct_decode_strict_n_ (uname_ext + r, uname_ext_len - r,
-                                    buf, buf_size);
+  _TPtr<char> _T_uname_ext = StaticUncheckedToTStrAdaptor(uname_ext + r, uname_ext_len - r);
+  _TPtr<char> _T_buf = StaticUncheckedToTStrAdaptor(buf, buf_size);
+  w = MHD_str_pct_decode_strict_n_ (_T_uname_ext, uname_ext_len - r,
+                                    _T_buf, buf_size);
+  t_strncpy(buf, _T_buf, w);
+  t_free(_T_buf);
+  t_free(_T_uname_ext);
   if ((0 == w) && (0 != uname_ext_len - r))
     return -1; /* Broken percent encoding */
   buf[w] = 0; /* Zero terminate the result */
