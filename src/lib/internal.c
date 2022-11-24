@@ -25,7 +25,7 @@
  */
 #include "internal.h"
 #include "mhd_str.h"
-
+#include <checkcbox_extensions.h>
 #ifdef HAVE_MESSAGES
 #if DEBUG_STATES
 /**
@@ -138,39 +138,18 @@ MHD_unescape_plus (char *arg)
  * @return length of the resulting val (strlen(val) maybe
  *  shorter afterwards due to elimination of escape sequences)
  */
+ //This is not directly involved in the test cases
 size_t
-MHD_http_unescape (char *val)
+MHD_http_unescape (_TPtr<char> val)
 {
-  char *rpos = val;
-  char *wpos = val;
-
-  while ('\0' != *rpos)
-  {
-    uint32_t num;
-    switch (*rpos)
-    {
-    case '%':
-      if (2 == MHD_strx_to_uint32_n_ (rpos + 1,
-                                      2,
-                                      &num))
-      {
-        *wpos = (char) ((unsigned char) num);
-        wpos++;
-        rpos += 3;
-        break;
-      }
-    /* TODO: add bad sequence handling */
-    /* intentional fall through! */
-    default:
-      *wpos = *rpos;
-      wpos++;
-      rpos++;
-    }
-  }
-  *wpos = '\0'; /* add 0-terminator */
-  return wpos - val; /* = strlen(val) */
+    return MHD_http_unescape_2(val);
 }
 
+_Tainted size_t
+MHD_http_unescape_2 (_TPtr<char> val)
+{
+    return w2c_MHD_http_unescape_2(c_fetch_sandbox_address(), (int)val);
+}
 
 /**
  * Parse and unescape the arguments given by the client

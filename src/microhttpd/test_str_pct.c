@@ -28,7 +28,9 @@
 #include <stdio.h>
 #include "mhd_str.h"
 #include "mhd_assert.h"
-
+#include <string_tainted.h>
+#include <stdlib_tainted.h>
+#include <checkcbox_extensions.h>
 #ifndef MHD_STATICSTR_LEN_
 /**
  * Determine length of static string / macro strings at compile time.
@@ -36,6 +38,12 @@
 #define MHD_STATICSTR_LEN_(macro) (sizeof(macro) / sizeof(char) - 1)
 #endif /* ! MHD_STATICSTR_LEN_ */
 
+_Tainted size_t
+MHD_str_pct_decode_lenient_n_ (_TPtr<const char> pct_encoded,
+                               size_t pct_encoded_len,
+                               _TPtr<char> decoded,
+                               size_t buf_size,
+                               _TPtr<bool> broken_encoding);
 
 static char tmp_bufs[4][4 * 1024]; /* should be enough for testing */
 static size_t buf_idx = 0;
@@ -89,20 +97,71 @@ n_prnt (const char *str, size_t len)
   return buf;
 }
 
+static _TPtr<char>
+_T_n_prnt (_TPtr<const char> str, size_t len)
+{
+    static _TPtr<char> buf = NULL;  /* should be enough for testing */
+    static const size_t buf_size = sizeof(tmp_bufs[0]);
+    size_t r_pos = 0;
+    size_t w_pos = 0;
+    if (++buf_idx >= (sizeof(tmp_bufs) / sizeof(tmp_bufs[0])))
+        buf_idx = 0;
+    buf = StaticUncheckedToTStrAdaptor(tmp_bufs[buf_idx], strlen(tmp_bufs[buf_idx]));
+
+    while (len > r_pos && w_pos + 1 < buf_size)
+    {
+        const unsigned char c = (unsigned char) str[r_pos];
+        if ((c == '\\') || (c == '"') )
+        {
+            if (w_pos + 2 >= buf_size)
+                break;
+            buf[w_pos++] = '\\';
+            buf[w_pos++] = (char) c;
+        }
+        else if ((c >= 0x20) && (c <= 0x7E) )
+            buf[w_pos++] = (char) c;
+        else
+        {
+            if (w_pos + 4 >= buf_size)
+                break;
+            if (t_snprintf (buf + w_pos, buf_size - w_pos, "\\x%02hX", (short unsigned
+            int) c) != 4)
+                break;
+            w_pos += 4;
+        }
+        r_pos++;
+    }
+
+    if (len != r_pos)
+    {   /* not full string is printed */
+        /* enough space for "..." ? */
+        if (w_pos + 3 > buf_size)
+            w_pos = buf_size - 4;
+        buf[w_pos++] = '.';
+        buf[w_pos++] = '.';
+        buf[w_pos++] = '.';
+    }
+    buf[w_pos] = 0;
+    t_strcpy(tmp_bufs[buf_idx], buf); // as its null terminated anyway
+    return buf;
+}
 
 #define TEST_BIN_MAX_SIZE 1024
 
 /* return zero if succeed, number of failures otherwise */
 static unsigned int
-expect_decoded_n (const char *const encoded, const size_t encoded_len,
-                  const char *const decoded, const size_t decoded_size,
+expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
+                  const char *const decoded_checked, const size_t decoded_size,
                   const unsigned int line_num)
 {
   static const char fill_chr = '#';
-  static char buf[TEST_BIN_MAX_SIZE];
+  static _TPtr<char> buf = NULL;
+  buf = (_TPtr<char>)t_malloc(TEST_BIN_MAX_SIZE*sizeof(char));
   size_t res_size;
   unsigned int ret;
-
+  //Perform Marshalling here
+  _TPtr<char> encoded =  StaticUncheckedToTStrAdaptor(encoded_checked, encoded_len);
+  _TPtr<char> decoded = StaticUncheckedToTStrAdaptor(decoded_checked, decoded_size);
   mhd_assert (NULL != encoded);
   mhd_assert (NULL != decoded);
   mhd_assert (TEST_BIN_MAX_SIZE > decoded_size + 1);
@@ -116,7 +175,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
   {
     unsigned int check_res = 0;
 
-    memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+    t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
     res_size = MHD_str_pct_decode_strict_n_ (encoded, encoded_len, buf,
                                              decoded_size + 1);
     if (res_size != decoded_size)
@@ -137,7 +196,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
       }
       else
       {
-        memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+        t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
         res_size = MHD_str_pct_decode_strict_n_ (encoded, encoded_len, buf,
                                                  decoded_size);
         if (res_size != decoded_size)
@@ -149,7 +208,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
         }
       }
       if ((res_size == decoded_size) && (0 != decoded_size) &&
-          (0 != memcmp (buf, decoded, decoded_size)))
+          (0 != t_memcmp (buf, decoded, decoded_size)))
       {
         check_res = 1;
         fprintf (stderr,
@@ -163,14 +222,14 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
       fprintf (stderr,
                "\tRESULT  : MHD_str_pct_decode_strict_n_ (\"%s\", %u, "
                "->\"%s\", %u) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (buf, res_size), (unsigned) decoded_size,
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (buf, res_size), (unsigned) decoded_size,
                (unsigned) res_size);
       fprintf (stderr,
                "\tEXPECTED: MHD_str_pct_decode_strict_n_ (\"%s\", %u, "
                "->\"%s\", %u) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (decoded, decoded_size), (unsigned) decoded_size,
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (decoded, decoded_size), (unsigned) decoded_size,
                (unsigned) decoded_size);
     }
   }
@@ -180,7 +239,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
   {
     unsigned int check_res = 0;
 
-    memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+    t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
     res_size = MHD_str_pct_decode_strict_n_ (encoded, encoded_len, buf,
                                              encoded_len + 1);
     if (res_size != decoded_size)
@@ -200,7 +259,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                  "A char written outside the buffer:\n");
       }
       if ((res_size == decoded_size) && (0 != decoded_size) &&
-          (0 != memcmp (buf, decoded, decoded_size)))
+          (0 != t_memcmp (buf, decoded, decoded_size)))
       {
         check_res = 1;
         fprintf (stderr,
@@ -214,14 +273,14 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
       fprintf (stderr,
                "\tRESULT  : MHD_str_pct_decode_strict_n_ (\"%s\", %u, "
                "->\"%s\", %u) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (buf, res_size), (unsigned) (encoded_len + 1),
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (buf, res_size), (unsigned) (encoded_len + 1),
                (unsigned) res_size);
       fprintf (stderr,
                "\tEXPECTED: MHD_str_pct_decode_strict_n_ (\"%s\", %u, "
                "->\"%s\", %u) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
                (unsigned) decoded_size);
     }
   }
@@ -230,11 +289,12 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
   if (1)
   {
     unsigned int check_res = 0;
-    bool is_broken = true;
+    _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+    *is_broken = true;
 
-    memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+    t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
     res_size = MHD_str_pct_decode_lenient_n_ (encoded, encoded_len, buf,
-                                              decoded_size + 1, &is_broken);
+                                              decoded_size + 1, is_broken);
     if (res_size != decoded_size)
     {
       check_res = 1;
@@ -253,10 +313,10 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
       }
       else
       {
-        is_broken = true;
-        memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+        *is_broken = true;
+        t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
         res_size = MHD_str_pct_decode_lenient_n_ (encoded, encoded_len, buf,
-                                                  decoded_size, &is_broken);
+                                                  decoded_size, is_broken);
         if (res_size != decoded_size)
         {
           check_res = 1;
@@ -265,7 +325,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                    "Wrong returned value:\n");
         }
       }
-      if (is_broken)
+      if (*is_broken)
       {
         check_res = 1;
         fprintf (stderr,
@@ -273,7 +333,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                  "Wrong 'broken_encoding' result:\n");
       }
       if ((res_size == decoded_size) && (0 != decoded_size) &&
-          (0 != memcmp (buf, decoded, decoded_size)))
+          (0 != t_memcmp (buf, decoded, decoded_size)))
       {
         check_res = 1;
         fprintf (stderr,
@@ -287,28 +347,30 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
       fprintf (stderr,
                "\tRESULT  : MHD_str_pct_decode_lenient_n_ (\"%s\", %u, "
                "->\"%s\", %u, ->%s) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (buf, res_size), (unsigned) decoded_size,
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (buf, res_size), (unsigned) decoded_size,
                is_broken ? "true" : "false",
                (unsigned) res_size);
       fprintf (stderr,
                "\tEXPECTED: MHD_str_pct_decode_lenient_n_ (\"%s\", %u, "
                "->\"%s\", %u, ->false) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (decoded, decoded_size), (unsigned) decoded_size,
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (decoded, decoded_size), (unsigned) decoded_size,
                (unsigned) decoded_size);
     }
+    t_free(is_broken);
   }
 
   /* check MHD_str_pct_decode_lenient_n_() with large out buffer */
   if (1)
   {
     unsigned int check_res = 0;
-    bool is_broken = true;
+    _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+    *is_broken = true;
 
-    memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+    t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
     res_size = MHD_str_pct_decode_lenient_n_ (encoded, encoded_len, buf,
-                                              encoded_len + 1, &is_broken);
+                                              encoded_len + 1, is_broken);
     if (res_size != decoded_size)
     {
       check_res = 1;
@@ -325,7 +387,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                  "'MHD_str_pct_decode_lenient_n_ ()' FAILED: "
                  "A char written outside the buffer:\n");
       }
-      if (is_broken)
+      if (*is_broken)
       {
         check_res = 1;
         fprintf (stderr,
@@ -333,7 +395,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                  "Wrong 'broken_encoding' result:\n");
       }
       if ((res_size == decoded_size) && (0 != decoded_size) &&
-          (0 != memcmp (buf, decoded, decoded_size)))
+          (0 != t_memcmp (buf, decoded, decoded_size)))
       {
         check_res = 1;
         fprintf (stderr,
@@ -347,28 +409,29 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
       fprintf (stderr,
                "\tRESULT  : MHD_str_pct_decode_lenient_n_ (\"%s\", %u, "
                "->\"%s\", %u, ->%s) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (buf, res_size), (unsigned) (encoded_len + 1),
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (buf, res_size), (unsigned) (encoded_len + 1),
                is_broken ? "true" : "false",
                (unsigned) res_size);
       fprintf (stderr,
                "\tEXPECTED: MHD_str_pct_decode_lenient_n_ (\"%s\", %u, "
                "->\"%s\", %u, ->false) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
                (unsigned) decoded_size);
     }
+    t_free(is_broken);
   }
 
-  if (strlen (encoded) == encoded_len)
+  if (t_strlen (encoded) == encoded_len)
   {
     /* check MHD_str_pct_decode_in_place_strict_() */
     if (1)
     {
       unsigned int check_res = 0;
 
-      memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
-      memcpy (buf, encoded, encoded_len);
+      t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
+      t_memcpy (buf, encoded, encoded_len);
       buf[encoded_len] = 0;
       res_size = MHD_str_pct_decode_in_place_strict_ (buf);
       if (res_size != decoded_size)
@@ -397,7 +460,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                    "A char written outside the buffer:\n");
         }
         if ((res_size == decoded_size) && (0 != decoded_size) &&
-            (0 != memcmp (buf, decoded, decoded_size)))
+            (0 != t_memcmp (buf, decoded, decoded_size)))
         {
           check_res = 1;
           fprintf (stderr,
@@ -411,14 +474,14 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
         fprintf (stderr,
                  "\tRESULT  : MHD_str_pct_decode_in_place_strict_ (\"%s\" "
                  "-> \"%s\") -> %u\n",
-                 n_prnt (encoded, encoded_len),
-                 n_prnt (buf, res_size),
+                 _T_n_prnt (encoded, encoded_len),
+                 _T_n_prnt (buf, res_size),
                  (unsigned) res_size);
         fprintf (stderr,
                  "\tEXPECTED: MHD_str_pct_decode_in_place_strict_ (\"%s\" "
                  "-> \"%s\") -> %u\n",
-                 n_prnt (encoded, encoded_len),
-                 n_prnt (decoded, decoded_size),
+                 _T_n_prnt (encoded, encoded_len),
+                 _T_n_prnt (decoded, decoded_size),
                  (unsigned) decoded_size);
       }
     }
@@ -427,12 +490,14 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
     if (1)
     {
       unsigned int check_res = 0;
-      bool is_broken = true;
+      _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+      *is_broken = true;
 
-      memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
-      memcpy (buf, encoded, encoded_len);
+      t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
+      t_memcpy (buf, encoded, encoded_len);
       buf[encoded_len] = 0;
-      res_size = MHD_str_pct_decode_in_place_lenient_ (buf, &is_broken);
+      res_size = MHD_str_pct_decode_in_place_lenient_ (buf, is_broken);
+      buf[res_size] = 0;
       if (res_size != decoded_size)
       {
         check_res = 1;
@@ -458,7 +523,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                    "'MHD_str_pct_decode_in_place_lenient_ ()' FAILED: "
                    "A char written outside the buffer:\n");
         }
-        if (is_broken)
+        if (*is_broken)
         {
           check_res = 1;
           fprintf (stderr,
@@ -466,7 +531,7 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
                    "Wrong 'broken_encoding' result:\n");
         }
         if ((res_size == decoded_size) && (0 != decoded_size) &&
-            (0 != memcmp (buf, decoded, decoded_size)))
+            (0 != t_memcmp (buf, decoded, decoded_size)))
         {
           check_res = 1;
           fprintf (stderr,
@@ -480,15 +545,15 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
         fprintf (stderr,
                  "\tRESULT  : MHD_str_pct_decode_in_place_lenient_ (\"%s\" "
                  "-> \"%s\", ->%s) -> %u\n",
-                 n_prnt (encoded, encoded_len),
-                 n_prnt (buf, res_size),
-                 is_broken ? "true" : "false",
+                 _T_n_prnt (encoded, encoded_len),
+                 _T_n_prnt (buf, res_size),
+                 *is_broken ? "true" : "false",
                  (unsigned) res_size);
         fprintf (stderr,
                  "\tEXPECTED: MHD_str_pct_decode_in_place_lenient_ (\"%s\" "
                  "-> \"%s\", ->false) -> %u\n",
-                 n_prnt (encoded, encoded_len),
-                 n_prnt (decoded, decoded_size),
+                 _T_n_prnt (encoded, encoded_len),
+                 _T_n_prnt (decoded, decoded_size),
                  (unsigned) decoded_size);
       }
     }
@@ -499,6 +564,8 @@ expect_decoded_n (const char *const encoded, const size_t encoded_len,
     fprintf (stderr,
              "The check is at line: %u\n\n", line_num);
   }
+  t_free(encoded);
+  t_free(decoded);
   return ret;
 }
 
@@ -691,15 +758,18 @@ check_decode_bin (void)
 
 /* return zero if succeed, number of failures otherwise */
 static unsigned int
-expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
-                      const char *const decoded, const size_t decoded_size,
+expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_len,
+                      const char *const decoded_checked, const size_t decoded_size,
                       const unsigned int line_num)
 {
   static const char fill_chr = '#';
-  static char buf[TEST_BIN_MAX_SIZE];
+  static _TPtr<char> buf = NULL;
+  buf = (_TPtr<char>)t_malloc(TEST_BIN_MAX_SIZE*sizeof(char));
   size_t res_size;
   unsigned int ret;
-
+  //Perform Marshalling here
+  _TPtr<char> encoded =  StaticUncheckedToTStrAdaptor(encoded_checked, encoded_len);
+  _TPtr<char> decoded = StaticUncheckedToTStrAdaptor(decoded_checked, decoded_size);
   mhd_assert (NULL != encoded);
   mhd_assert (NULL != decoded);
   mhd_assert (TEST_BIN_MAX_SIZE > decoded_size + 1);
@@ -713,7 +783,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
   {
     unsigned int check_res = 0;
 
-    memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+    t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
     res_size = MHD_str_pct_decode_strict_n_ (encoded, encoded_len, buf,
                                              decoded_size);
     if (res_size != 0)
@@ -729,13 +799,13 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
       fprintf (stderr,
                "\tRESULT  : MHD_str_pct_decode_strict_n_ (\"%s\", %u, "
                "->\"%s\", %u) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (buf, res_size), (unsigned) decoded_size,
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (buf, res_size), (unsigned) decoded_size,
                (unsigned) res_size);
       fprintf (stderr,
                "\tEXPECTED: MHD_str_pct_decode_strict_n_ (\"%s\", %u, "
                "->(not defined), %u) -> 0\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
                (unsigned) decoded_size);
     }
   }
@@ -745,7 +815,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
   {
     unsigned int check_res = 0;
 
-    memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+    t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
     res_size = MHD_str_pct_decode_strict_n_ (encoded, encoded_len, buf,
                                              encoded_len + 1);
     if (res_size != 0)
@@ -761,13 +831,13 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
       fprintf (stderr,
                "\tRESULT  : MHD_str_pct_decode_strict_n_ (\"%s\", %u, "
                "->\"%s\", %u) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (buf, res_size), (unsigned) (encoded_len + 1),
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (buf, res_size), (unsigned) (encoded_len + 1),
                (unsigned) res_size);
       fprintf (stderr,
                "\tEXPECTED: MHD_str_pct_decode_strict_n_ (\"%s\", %u, "
                "->(not defined), %u) -> 0\n",
-               n_prnt (encoded, encoded_len), (unsigned) (encoded_len + 1),
+               _T_n_prnt (encoded, encoded_len), (unsigned) (encoded_len + 1),
                (unsigned) decoded_size);
     }
   }
@@ -776,11 +846,12 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
   if (1)
   {
     unsigned int check_res = 0;
-    bool is_broken = false;
+    _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+    *is_broken = false;
 
-    memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+    t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
     res_size = MHD_str_pct_decode_lenient_n_ (encoded, encoded_len, buf,
-                                              decoded_size + 1, &is_broken);
+                                              decoded_size + 1, is_broken);
     if (res_size != decoded_size)
     {
       check_res = 1;
@@ -799,10 +870,10 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
       }
       else
       {
-        is_broken = false;
-        memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+        *is_broken = false;
+        t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
         res_size = MHD_str_pct_decode_lenient_n_ (encoded, encoded_len, buf,
-                                                  decoded_size, &is_broken);
+                                                  decoded_size, is_broken);
         if (res_size != decoded_size)
         {
           check_res = 1;
@@ -811,7 +882,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                    "Wrong returned value:\n");
         }
       }
-      if (! is_broken)
+      if (! *is_broken)
       {
         check_res = 1;
         fprintf (stderr,
@@ -819,7 +890,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                  "Wrong 'broken_encoding' result:\n");
       }
       if ((res_size == decoded_size) && (0 != decoded_size) &&
-          (0 != memcmp (buf, decoded, decoded_size)))
+          (0 != t_memcmp (buf, decoded, decoded_size)))
       {
         check_res = 1;
         fprintf (stderr,
@@ -833,28 +904,30 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
       fprintf (stderr,
                "\tRESULT  : MHD_str_pct_decode_lenient_n_ (\"%s\", %u, "
                "->\"%s\", %u, ->%s) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (buf, res_size), (unsigned) decoded_size,
-               is_broken ? "true" : "false",
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (buf, res_size), (unsigned) decoded_size,
+               *is_broken ? "true" : "false",
                (unsigned) res_size);
       fprintf (stderr,
                "\tEXPECTED: MHD_str_pct_decode_lenient_n_ (\"%s\", %u, "
                "->\"%s\", %u, ->true) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (decoded, decoded_size), (unsigned) decoded_size,
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (decoded, decoded_size), (unsigned) decoded_size,
                (unsigned) decoded_size);
     }
+    t_free(is_broken);
   }
 
   /* check MHD_str_pct_decode_lenient_n_() with large out buffer */
   if (1)
   {
     unsigned int check_res = 0;
-    bool is_broken = false;
+    _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+    *is_broken = false;
 
-    memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
+    t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
     res_size = MHD_str_pct_decode_lenient_n_ (encoded, encoded_len, buf,
-                                              encoded_len + 1, &is_broken);
+                                              encoded_len + 1, is_broken);
     if (res_size != decoded_size)
     {
       check_res = 1;
@@ -871,7 +944,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                  "'MHD_str_pct_decode_lenient_n_ ()' FAILED: "
                  "A char written outside the buffer:\n");
       }
-      if (! is_broken)
+      if (! *is_broken)
       {
         check_res = 1;
         fprintf (stderr,
@@ -879,7 +952,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                  "Wrong 'broken_encoding' result:\n");
       }
       if ((res_size == decoded_size) && (0 != decoded_size) &&
-          (0 != memcmp (buf, decoded, decoded_size)))
+          (0 != t_memcmp (buf, decoded, decoded_size)))
       {
         check_res = 1;
         fprintf (stderr,
@@ -893,28 +966,29 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
       fprintf (stderr,
                "\tRESULT  : MHD_str_pct_decode_lenient_n_ (\"%s\", %u, "
                "->\"%s\", %u, ->%s) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (buf, res_size), (unsigned) (encoded_len + 1),
-               is_broken ? "true" : "false",
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (buf, res_size), (unsigned) (encoded_len + 1),
+               *is_broken ? "true" : "false",
                (unsigned) res_size);
       fprintf (stderr,
                "\tEXPECTED: MHD_str_pct_decode_lenient_n_ (\"%s\", %u, "
                "->\"%s\", %u, ->true) -> %u\n",
-               n_prnt (encoded, encoded_len), (unsigned) encoded_len,
-               n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
+               _T_n_prnt (encoded, encoded_len), (unsigned) encoded_len,
+               _T_n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
                (unsigned) decoded_size);
     }
+    t_free(is_broken);
   }
 
-  if (strlen (encoded) == encoded_len)
+  if (t_strlen (encoded) == encoded_len)
   {
     /* check MHD_str_pct_decode_in_place_strict_() */
     if (1)
     {
       unsigned int check_res = 0;
 
-      memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
-      memcpy (buf, encoded, encoded_len);
+      t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
+      t_memcpy (buf, encoded, encoded_len);
       buf[encoded_len] = 0;
       res_size = MHD_str_pct_decode_in_place_strict_ (buf);
       if (res_size != 0)
@@ -930,13 +1004,13 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
         fprintf (stderr,
                  "\tRESULT  : MHD_str_pct_decode_in_place_strict_ (\"%s\" "
                  "-> \"%s\") -> %u\n",
-                 n_prnt (encoded, encoded_len),
-                 n_prnt (buf, res_size),
+                 _T_n_prnt (encoded, encoded_len),
+                 _T_n_prnt (buf, res_size),
                  (unsigned) res_size);
         fprintf (stderr,
                  "\tEXPECTED: MHD_str_pct_decode_in_place_strict_ (\"%s\" "
                  "-> (not defined)) -> 0\n",
-                 n_prnt (encoded, encoded_len));
+                 _T_n_prnt (encoded, encoded_len));
       }
     }
 
@@ -944,12 +1018,14 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
     if (1)
     {
       unsigned int check_res = 0;
-      bool is_broken = false;
+      _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+       *is_broken = false;
 
-      memset (buf, fill_chr, sizeof(buf)); /* Fill buffer with some character */
-      memcpy (buf, encoded, encoded_len);
+      t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
+      t_memcpy (buf, encoded, encoded_len);
       buf[encoded_len] = 0;
-      res_size = MHD_str_pct_decode_in_place_lenient_ (buf, &is_broken);
+      res_size = MHD_str_pct_decode_in_place_lenient_ (buf, is_broken);
+      buf[res_size] = 0;
       if (res_size != decoded_size)
       {
         check_res = 1;
@@ -975,7 +1051,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                    "'MHD_str_pct_decode_in_place_lenient_ ()' FAILED: "
                    "A char written outside the buffer:\n");
         }
-        if (! is_broken)
+        if (! *is_broken)
         {
           check_res = 1;
           fprintf (stderr,
@@ -983,7 +1059,7 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
                    "Wrong 'broken_encoding' result:\n");
         }
         if ((res_size == decoded_size) && (0 != decoded_size) &&
-            (0 != memcmp (buf, decoded, decoded_size)))
+            (0 != t_memcmp (buf, decoded, decoded_size)))
         {
           check_res = 1;
           fprintf (stderr,
@@ -997,17 +1073,18 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
         fprintf (stderr,
                  "\tRESULT  : MHD_str_pct_decode_in_place_lenient_ (\"%s\" "
                  "-> \"%s\", ->%s) -> %u\n",
-                 n_prnt (encoded, encoded_len),
-                 n_prnt (buf, res_size),
-                 is_broken ? "true" : "false",
+                 _T_n_prnt (encoded, encoded_len),
+                 _T_n_prnt (buf, res_size),
+                 *is_broken ? "true" : "false",
                  (unsigned) res_size);
         fprintf (stderr,
                  "\tEXPECTED: MHD_str_pct_decode_in_place_lenient_ (\"%s\" "
                  "-> \"%s\", ->true) -> %u\n",
-                 n_prnt (encoded, encoded_len),
-                 n_prnt (decoded, decoded_size),
+                 _T_n_prnt (encoded, encoded_len),
+                 _T_n_prnt (decoded, decoded_size),
                  (unsigned) decoded_size);
       }
+      t_free(is_broken);
     }
   }
 
@@ -1016,6 +1093,8 @@ expect_decoded_bad_n (const char *const encoded, const size_t encoded_len,
     fprintf (stderr,
              "The check is at line: %u\n\n", line_num);
   }
+  t_free(encoded);
+  t_free(decoded);
   return ret;
 }
 

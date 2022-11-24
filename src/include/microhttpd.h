@@ -3421,7 +3421,7 @@ MHD_set_panic_func (MHD_PanicCallback cb, void *cls);
  *  shorter afterwards due to elimination of escape sequences)
  */
 _MHD_EXTERN size_t
-MHD_http_unescape (char *val);
+MHD_http_unescape (_TPtr<char> val);
 
 
 /**
