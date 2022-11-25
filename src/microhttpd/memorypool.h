@@ -31,6 +31,8 @@
 #define MEMORYPOOL_H
 
 #include "mhd_options.h"
+#include <stdlib.h>
+
 #ifdef HAVE_STDDEF_H
 #include <stddef.h>
 #endif /* HAVE_STDDEF_H */

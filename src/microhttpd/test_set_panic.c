@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <string_tainted.h>
 
 #ifdef HAVE_STRINGS_H
 #include <strings.h>

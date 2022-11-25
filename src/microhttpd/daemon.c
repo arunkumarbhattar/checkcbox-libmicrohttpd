@@ -29,6 +29,8 @@
 #include "platform.h"
 #include <string_tainted.h>
 #include <stdlib_tainted.h>
+#include <stdlib.h>
+#include <unistd.h>
 #if defined(MHD_USE_POSIX_THREADS) || defined(MHD_USE_W32_THREADS)
 #include "mhd_threads.h"
 #endif

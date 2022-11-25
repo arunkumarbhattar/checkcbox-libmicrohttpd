@@ -720,6 +720,31 @@ _T_MHD_str_unquote (_TPtr<const char> quoted,
                  size_t quoted_len,
                  _TPtr<char> result);
 
+_TLIB size_t w2c__T_MHD_str_unquote(void*, unsigned int, size_t, unsigned int);
+_TLIB size_t w2c__T_MHD_str_quote(void* , unsigned int,
+                            size_t, unsigned int, size_t);
+_TLIB size_t w2c__T_MHD_base64_to_bin_n(void*, unsigned int,
+                                        size_t , unsigned int, size_t );
+_TLIB bool w2c__T_MHD_str_equal_caseless_quoted_bin_n(void*, unsigned int,
+                                           size_t, unsigned int
+                                                   , size_t);
+_TLIB bool w2c_MHD_str_equal_quoted_bin_n(void*, unsigned int, size_t,
+                               unsigned int,
+                               size_t);
+_TLIB size_t w2c_MHD_str_pct_decode_strict_n_(void*,
+unsigned int,
+size_t, unsigned int, size_t);
+
+_TLIB size_t w2c_MHD_str_pct_decode_lenient_n_(void*,
+                                             unsigned int,
+        size_t, unsigned int, size_t, unsigned int);
+
+_TLIB size_t w2c_MHD_str_pct_decode_in_place_strict_(void*, unsigned int);
+
+_TLIB size_t w2c_MHD_str_pct_decode_in_place_lenient_(void*,
+unsigned int,
+unsigned int);
+
 #endif /* DAUTH_SUPPORT */
 
 #if defined(DAUTH_SUPPORT) || defined(BAUTH_SUPPORT)
