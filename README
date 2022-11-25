@@ -154,7 +154,7 @@ For CHECKCBOX developmental use -->
 
 1) The below are the Initialization Commands under --> Settings > Build, Execution, Deployment > Makefile  
 ./bootstrap
-./configure CC=/home/twinturbo/Desktop/CheckCBox_Compiler/llvm/cmake-build-debug/bin/clang --enable-shared --enable-build-type=debug --enable-sanitizers=address CFLAGS=-fPIC LDFLAGS=-L/home/twinturbo/Desktop/checkcbox-libmicrohttpd/Checkcbox_LIBS LIBS="-ldl -lstdc++ -lSBX_CON_LIB -lisc_lib_final"
+./configure CC=/home/arun/Desktop/CheckCBox_Compiler/llvm/cmake-build-debug/bin/clang CFLAGS="-fPIC -fw2c_sbx" LDFLAGS=-L/home/arun/Desktop/untouched/checkcbox-libmicrohttpd/Checkcbox_LIBS LIBS="-ldl -lstdc++ -lSBX_CON_LIB -lisc_lib_final"
 2.)libisc_final_isc.so (shared object) file is necessary instead of (libisc_final_isc.a) (static library) for compilation -->
 ---> When compiling the above library just change --> "add_library(isc_lib_final FINAL ..." to "add_library(isc_lib_final SHARED ..."
 3.) Finally your executables would look for the above shared object file --> 
