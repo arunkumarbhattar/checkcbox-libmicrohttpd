@@ -223,6 +223,9 @@ int
 main (int argc,
       char *const *argv)
 {
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   unsigned int errorCount = 0;
   (void) argc; (void) argv; /* Unused. Silent compiler warning. */
 
@@ -235,5 +238,8 @@ main (int argc,
     fprintf (stderr,
              "Error (code: %u)\n",
              errorCount);
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  fprintf(stderr, "Time taken for test_daemon : %f\n", cpu_time_used);
   return 0 != errorCount;       /* 0 == pass */
 }

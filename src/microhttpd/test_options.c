@@ -121,10 +121,15 @@ test_ip_addr_option (void)
 int
 main (int argc, char *const *argv)
 {
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   unsigned int errorCount = 0;
   (void) argc; (void) argv; /* Unused. Silent compiler warning. */
 
   errorCount += test_wrap_loc ("ip addr option", &test_ip_addr_option);
-
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  fprintf(stderr, "Time taken for test_options : %f\n", cpu_time_used);
   return errorCount != 0;
 }

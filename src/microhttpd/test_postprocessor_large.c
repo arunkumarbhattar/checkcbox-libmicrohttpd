@@ -70,11 +70,13 @@ test_simple_large (void)
   size_t size;
   char data[102400];
   size_t pos;
-
+  clock_t start, end;
+  double cpu_time_used;
   pos = 0;
   memset (data, 'A', sizeof (data));
   memcpy (data, "key=", 4);
   data[sizeof (data) - 1] = '\0';
+  _TPtr<char> _T_data = StaticStrToTStr(data);start = clock();
   memset (&connection, 0, sizeof (struct MHD_Connection));
   memset (&header, 0, sizeof (struct MHD_HTTP_Res_Header));
   connection.rq.headers_received = &header;
@@ -91,7 +93,7 @@ test_simple_large (void)
     delta = 1 + ((size_t) MHD_random_ ()) % (size - i);
     if (MHD_YES !=
         MHD_post_process (pp,
-                          StaticUncheckedToTStrAdaptor(&data[i], delta),
+                          &_T_data[i],
                           delta))
     {
       fprintf (stderr,
@@ -104,7 +106,10 @@ test_simple_large (void)
   MHD_destroy_post_processor (pp);
   if (pos != sizeof (data) - 5) /* minus 0-termination and 'key=' */
     return 1;
-  t_free(GlobalTaintedAdaptorStr);
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  fprintf(stderr, "Time taken for test_postprocessor_large : %f\n", cpu_time_used);
+  t_free(_T_data);
   return 0;
 }
 

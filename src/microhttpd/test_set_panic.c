@@ -1577,6 +1577,9 @@ testMultithreadedPoolGet (enum testMhdPollType pollType)
 int
 main (int argc, char *const *argv)
 {
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   unsigned int errorCount = 0;
   unsigned int test_result = 0;
   verbose = 0;
@@ -1677,6 +1680,8 @@ main (int argc, char *const *argv)
     printf ("All tests passed.\n");
 
   test_global_cleanup ();
-
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  fprintf(stderr, "Time taken for test_set_panic : %f\n", cpu_time_used);
   return (errorCount == 0) ? 0 : 1;       /* 0 == pass */
 }

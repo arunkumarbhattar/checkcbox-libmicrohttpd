@@ -32,6 +32,8 @@
 #include <stdio.h>
 #include "mhd_compat.h"
 #include <checkcbox_extensions.h>
+#include <stdlib_tainted.h>
+#include <time.h>
 #ifndef WINDOWS
 #include <unistd.h>
 #endif
@@ -39,7 +41,8 @@
 #ifndef MHD_DEBUG_PP
 #define MHD_DEBUG_PP 0
 #endif /* MHD_DEBUG_PP */
-
+clock_t start, end;
+double cpu_time_used = 0.0, globalTime = 0.0;
 struct expResult
 {
   const char *key;
@@ -259,14 +262,20 @@ test_urlencoding_case (unsigned int want_start,
     for (i = 0; size > i; i += step)
     {
       size_t left = size - i;
+      end = clock();
+      cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+      globalTime += cpu_time_used;
+      _TPtr<char> tmp = StaticUncheckedToTStrAdaptor(&url_data[i], ((left > step) ? step : left));
+      start = clock();
       if (MHD_YES != MHD_post_process (pp,
-                                       StaticUncheckedToTStrAdaptor(&url_data[i], ((left > step) ? step : left)),
+                                       tmp,
                                        (left > step) ? step : left))
       {
         fprintf (stderr, "Failed to process the data.\n"
                  "i: %u. step: %u.\n"
                  "Line: %u\n", (unsigned) i, (unsigned) step,
                  (unsigned int) __LINE__);
+        t_free(tmp);
         exit (49);
       }
     }
@@ -284,7 +293,6 @@ test_urlencoding_case (unsigned int want_start,
       errors++;
     }
   }
-  t_free(GlobalTaintedAdaptorStr);
   return errors;
 }
 
@@ -407,7 +415,12 @@ test_multipart_garbage (void)
                "Line: %u\n", (unsigned int) __LINE__);
       exit (50);
     }
-    if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(xdata, splitpoint), splitpoint))
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    globalTime += cpu_time_used;
+    _TPtr<char> _T_xdata = StaticUncheckedToTStrAdaptor(xdata, splitpoint);
+    start = clock();
+    if (MHD_YES != MHD_post_process (pp, _T_xdata, splitpoint))
     {
       fprintf (stderr,
                "Test failed in line %u at point %d\n",
@@ -415,7 +428,13 @@ test_multipart_garbage (void)
                (int) splitpoint);
       exit (49);
     }
-    if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(&xdata[splitpoint], size - splitpoint), size - splitpoint))
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    globalTime += cpu_time_used;
+    t_free(_T_xdata);
+    _T_xdata = StaticUncheckedToTStrAdaptor(&xdata[splitpoint], size - splitpoint);
+    start = clock();
+    if (MHD_YES != MHD_post_process (pp, _T_xdata, size - splitpoint))
     {
       fprintf (stderr,
                "Test failed in line %u at point %u\n",
@@ -432,8 +451,13 @@ test_multipart_garbage (void)
                (unsigned int) splitpoint);
       return (unsigned int) splitpoint;
     }
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    globalTime += cpu_time_used;
+    t_free(_T_xdata);
+    start = clock();
   }
-  t_free(GlobalTaintedAdaptorStr);
+
   return 0;
 }
 
@@ -447,7 +471,11 @@ test_multipart_splits (void)
   unsigned int want_off;
   size_t size;
   size_t splitpoint;
-
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  globalTime += cpu_time_used;
+  _TPtr<char> _T_FORM_DATA =  StaticUncheckedToTStrAdaptor(FORM_DATA, strlen(FORM_DATA));
+  start = clock();
   size = strlen (FORM_DATA);
   for (splitpoint = 1; splitpoint < size; splitpoint++)
   {
@@ -469,21 +497,23 @@ test_multipart_splits (void)
                "Line: %u\n", (unsigned int) __LINE__);
       exit (50);
     }
-    if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(FORM_DATA, splitpoint), splitpoint))
+    if (MHD_YES != MHD_post_process (pp, _T_FORM_DATA, splitpoint))
     {
       fprintf (stderr,
                "Test failed in line %u at point %d\n",
                (unsigned int) __LINE__,
                (int) splitpoint);
+      t_free(_T_FORM_DATA);
       exit (49);
     }
-    if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(&FORM_DATA[splitpoint], size-splitpoint),
+    if (MHD_YES != MHD_post_process (pp, &_T_FORM_DATA[splitpoint],
                                      size - splitpoint))
     {
       fprintf (stderr,
                "Test failed in line %u at point %u\n",
                (unsigned int) __LINE__,
                (unsigned int) splitpoint);
+      t_free(_T_FORM_DATA);
       exit (49);
     }
     MHD_destroy_post_processor (pp);
@@ -496,7 +526,7 @@ test_multipart_splits (void)
       return (unsigned int) splitpoint;
     }
   }
-  t_free(GlobalTaintedAdaptorStr);
+  t_free(_T_FORM_DATA);
   return 0;
 }
 
@@ -508,6 +538,11 @@ test_multipart (void)
   struct MHD_HTTP_Req_Header header;
   struct MHD_PostProcessor *pp;
   unsigned int want_off = FORM_START;
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  globalTime += cpu_time_used;
+  _TPtr<char> _T_FORM_START =  StaticUncheckedToTStrAdaptor(FORM_DATA, strlen(FORM_DATA));
+  start = clock();
   size_t i;
   size_t delta;
   size_t size;
@@ -535,7 +570,7 @@ test_multipart (void)
   {
     delta = 1 + ((size_t) MHD_random_ ()) % (size - i);
     if (MHD_YES != MHD_post_process (pp,
-                                     StaticUncheckedToTStrAdaptor(&FORM_DATA[i], delta),
+                                     &_T_FORM_START[i],
                                      delta))
     {
       fprintf (stderr, "Failed to process the data.\n"
@@ -554,7 +589,7 @@ test_multipart (void)
              (unsigned int) __LINE__);
     return 2;
   }
-  t_free(GlobalTaintedAdaptorStr);
+  t_free(_T_FORM_START);
   return 0;
 }
 
@@ -569,7 +604,11 @@ test_nested_multipart (void)
   size_t i;
   size_t delta;
   size_t size;
-
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  globalTime += cpu_time_used;
+  _TPtr<char> _T_FORM_NESTED_DATA = StaticUncheckedToTStrAdaptor(FORM_NESTED_DATA, strlen(FORM_NESTED_DATA));
+  start = clock();
   memset (&connection, 0, sizeof (struct MHD_Connection));
   memset (&header, 0, sizeof (struct MHD_HTTP_Res_Header));
   connection.rq.headers_received = &header;
@@ -593,7 +632,7 @@ test_nested_multipart (void)
   {
     delta = 1 + ((size_t) MHD_random_ ()) % (size - i);
     if (MHD_YES != MHD_post_process (pp,
-                                     StaticUncheckedToTStrAdaptor(&FORM_NESTED_DATA[i], delta),
+                                     &_T_FORM_NESTED_DATA[i],
                                      delta))
     {
       fprintf (stderr, "Failed to process the data.\n"
@@ -612,7 +651,7 @@ test_nested_multipart (void)
              (unsigned int) __LINE__);
     return 4;
   }
-  t_free(GlobalTaintedAdaptorStr);
+  t_free(_T_FORM_NESTED_DATA);
   return 0;
 }
 
@@ -644,7 +683,7 @@ test_overflow (void)
   size_t i;
   size_t j;
   size_t delta;
-  char *buf;
+  _TPtr<char> buf = NULL;
 
   memset (&connection, 0, sizeof (struct MHD_Connection));
   memset (&header, 0, sizeof (struct MHD_HTTP_Res_Header));
@@ -666,10 +705,10 @@ test_overflow (void)
                "Line: %u\n", (unsigned int) __LINE__);
       exit (50);
     }
-    buf = malloc (i);
+    buf = (_TPtr<char>)t_malloc (i);
     if (NULL == buf)
       return 1;
-    memset (buf, 'A', i);
+    t_memset (buf, 'A', i);
     buf[i / 2] = '=';
     delta = 1 + (((size_t) MHD_random_ ()) % (i - 1));
     j = 0;
@@ -679,15 +718,14 @@ test_overflow (void)
         delta = i - j;
       if (MHD_NO ==
           MHD_post_process (pp,
-                            StaticUncheckedToTStrAdaptor(&buf[j], delta),
+                            &buf[j],
                             delta))
         break;
       j += delta;
     }
-    free (buf);
+    t_free (buf);
     MHD_destroy_post_processor (pp);
   }
-    t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 
@@ -696,6 +734,11 @@ static unsigned int
 test_empty_key (void)
 {
   const char form_data[] = "=abcdef";
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  globalTime += cpu_time_used;
+  _TPtr<const char>_T_form_data = StaticUncheckedToTStrAdaptor(form_data, strlen(form_data));
+  start = clock();
   size_t step;
   const size_t size = MHD_STATICSTR_LEN_ (form_data);
 
@@ -727,7 +770,7 @@ test_empty_key (void)
     for (i = 0; size > i; i += step)
     {
       if (MHD_NO != MHD_post_process (pp,
-                                      StaticUncheckedToTStrAdaptor(form_data + i, (step > size - i) ? (size - i) : step),
+                                      _T_form_data + i,
                                       (step > size - i) ? (size - i) : step))
       {
         fprintf (stderr, "Succeed to process the broken data.\n"
@@ -739,7 +782,7 @@ test_empty_key (void)
     }
     MHD_destroy_post_processor (pp);
   }
-    t_free(GlobalTaintedAdaptorStr);
+  t_free(_T_form_data);
   return 0;
 }
 
@@ -748,6 +791,11 @@ static unsigned int
 test_double_value (void)
 {
   const char form_data[] = URL_DATA "=abcdef";
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  globalTime += cpu_time_used;
+  _TPtr<const char> _T_form_data = StaticUncheckedToTStrAdaptor(form_data, strlen(form_data));
+  start = clock();
   size_t step;
   const size_t size = MHD_STATICSTR_LEN_ (form_data);
   const size_t safe_size = MHD_STATICSTR_LEN_ (URL_DATA);
@@ -782,7 +830,7 @@ test_double_value (void)
     for (i = 0; size > i; i += step)
     {
       if (MHD_NO != MHD_post_process (pp,
-                                      StaticUncheckedToTStrAdaptor(form_data + i, (step > size - i) ? (size - i) : step),
+                                      _T_form_data + i,
                                       (step > size - i) ? (size - i) : step))
       {
         if (safe_size == i + step)
@@ -820,7 +868,7 @@ test_double_value (void)
       return 1;
     }
   }
-    t_free(GlobalTaintedAdaptorStr);
+  t_free(_T_form_data);
   return 0;
 }
 
@@ -828,6 +876,7 @@ test_double_value (void)
 int
 main (int argc, char *const *argv)
 {
+  start = clock();
   unsigned int errorCount = 0;
   (void) argc; (void) argv;  /* Unused. Silent compiler warning. */
 
@@ -841,5 +890,9 @@ main (int argc, char *const *argv)
   errorCount += test_overflow ();
   if (errorCount != 0)
     fprintf (stderr, "Error (code: %u)\n", errorCount);
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  globalTime += cpu_time_used;
+  fprintf(stderr, "Time taken for test_postprocessor : %f\n", globalTime);
   return (errorCount == 0) ? 0 : 1;       /* 0 == pass */
 }

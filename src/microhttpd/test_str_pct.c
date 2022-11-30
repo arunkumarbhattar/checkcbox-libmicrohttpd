@@ -31,6 +31,7 @@
 #include <string_tainted.h>
 #include <stdlib_tainted.h>
 #include <checkcbox_extensions.h>
+#include <time.h>
 #ifndef MHD_STATICSTR_LEN_
 /**
  * Determine length of static string / macro strings at compile time.
@@ -1128,6 +1129,9 @@ check_decode_bad_str (void)
 int
 main (int argc, char *argv[])
 {
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   unsigned int errcount = 0;
   (void) argc; (void) argv; /* Unused. Silent compiler warning. */
   errcount += check_decode_str ();
@@ -1135,5 +1139,8 @@ main (int argc, char *argv[])
   errcount += check_decode_bad_str ();
   if (0 == errcount)
     printf ("All tests have been passed without errors.\n");
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  fprintf(stderr, "Time taken for test_str_pct : %f\n", cpu_time_used);
   return errcount == 0 ? 0 : 1;
 }

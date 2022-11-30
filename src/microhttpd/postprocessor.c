@@ -468,12 +468,12 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
         mhd_assert (end_key >= start_key);
         if (0 != key_len)
         {
-//          if ( (pp->buffer_pos + key_len >= pp->buffer_size) ||
-//               (pp->buffer_pos + key_len < pp->buffer_pos) ) -->LATEST FIXED VERSION
-            if ( (pp->buffer_pos + (end_key - start_key) > // --> BUGGY VERSION
-                      pp->buffer_size) ||
-                     (pp->buffer_pos + (end_key - start_key) <
-                      pp->buffer_pos) )
+          if ( (pp->buffer_pos + key_len >= pp->buffer_size) ||
+               (pp->buffer_pos + key_len < pp->buffer_pos) ) //-->LATEST FIXED VERSION
+//            if ( (pp->buffer_pos + (end_key - start_key) > // --> BUGGY VERSION
+//                      pp->buffer_size) ||
+//                     (pp->buffer_pos + (end_key - start_key) <
+//                      pp->buffer_pos) )
           {
             /* key too long, cannot parse! */
             pp->state = PP_Error;
@@ -550,14 +550,14 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
     mhd_assert ((PP_ProcessKey == pp->state) || (NULL != end_key));
     if (NULL == end_key)
       end_key = &post_data[poff];
-//    mhd_assert (end_key >= start_key);
+    mhd_assert (end_key >= start_key);
     key_len = (size_t) (end_key - start_key);
-//    mhd_assert (0 != key_len); /* it must be always non-zero here */
-//    if (pp->buffer_pos + key_len >= pp->buffer_size)
-//    {
-//      pp->state = PP_Error;
-//      return MHD_NO;
-//    } --> OVERFLOW FIXED VERSION
+    mhd_assert (0 != key_len); /* it must be always non-zero here */
+    if (pp->buffer_pos + key_len >= pp->buffer_size)
+    {
+      pp->state = PP_Error;
+      return MHD_NO;
+    } //--> OVERFLOW FIXED VERSION
     t_memcpy (&kbuf[pp->buffer_pos],
             start_key,
             key_len);

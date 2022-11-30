@@ -26,6 +26,7 @@
 #include "mhd_options.h"
 #include "platform.h"
 #include <microhttpd.h>
+#include <time.h>
 
 #if defined(MHD_CPU_COUNT) && (MHD_CPU_COUNT + 0) < 2
 #undef MHD_CPU_COUNT
@@ -124,6 +125,9 @@ int
 main (int argc,
       char *const *argv)
 {
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   unsigned int errorCount = 0;
   (void) argc;
   (void) argv; /* Unused. Silence compiler warning. */
@@ -151,5 +155,8 @@ main (int argc,
     fprintf (stderr,
              "Error (code: %u)\n",
              errorCount);
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  fprintf(stderr, "Time taken for test_start_stop : %f\n", cpu_time_used);
   return (errorCount == 0) ? 0 : 1;       /* 0 == pass */
 }

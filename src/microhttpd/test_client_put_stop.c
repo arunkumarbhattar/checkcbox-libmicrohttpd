@@ -1351,8 +1351,6 @@ ahcCheck (void *cls,
                (unsigned int) param->req_body_size);
       mhdErrorExit ();
     }
-    //print the address of upload_data
-    fprintf(stderr, "upload_data address: %p\n", upload_data);
     if (0 != t_memcmp (upload_data, upload_body + param->req_body_uploaded,
                      *upload_data_size))
     {
@@ -2063,6 +2061,9 @@ testMultithreadedPoolGet (enum testMhdPollType pollType)
 int
 main (int argc, char *const *argv)
 {
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   unsigned int errorCount = 0;
   unsigned int test_result = 0;
   verbose = 0;
@@ -2177,6 +2178,8 @@ main (int argc, char *const *argv)
     printf ("All tests passed.\n");
 
   test_global_cleanup ();
-
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  fprintf(stderr, "Time taken for test_client_put_stop : %f\n", cpu_time_used);
   return (errorCount == 0) ? 0 : 1;       /* 0 == pass */
 }

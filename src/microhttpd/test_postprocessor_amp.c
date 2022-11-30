@@ -77,7 +77,10 @@ main (int argc, char *const *argv)
     "++++%3C%2Fxxxxx%3E%0A+++%3C%2Fxxx%3E%0A%3C%2Fxxx%3E%0A%0A%3Cxxx+xx%3D%"
     "22xxxxxx%22%3E%3C%2Fxxx%3E%0A%0A%3C%2Fxxxx%3E%0A%3C%2Fxxxx%3E+&b=value";
   (void) argc; (void) argv;  /* Unused. Silent compiler warning. */
-
+  _TPtr<char> _T_post = StaticStrToTStr(post);
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   num_errors = 0;
   memset (&connection, 0, sizeof (struct MHD_Connection));
   memset (&header, 0, sizeof (struct MHD_HTTP_Res_Header));
@@ -93,10 +96,12 @@ main (int argc, char *const *argv)
   if (NULL == pp)
     return 1;
 
-  if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(post, strlen (post)), strlen (post)))
+  if (MHD_YES != MHD_post_process (pp, _T_post, t_strlen (_T_post)))
     num_errors++;
   MHD_destroy_post_processor (pp);
-
-  t_free(GlobalTaintedAdaptorStr);
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  t_free(_T_post);
+  fprintf(stderr, "Time taken for test_postprocessor_amp : %f\n", cpu_time_used);
   return num_errors == 0 ? 0 : 2;
 }

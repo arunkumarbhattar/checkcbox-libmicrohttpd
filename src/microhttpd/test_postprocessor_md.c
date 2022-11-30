@@ -26,6 +26,7 @@
  */
 #include "mhd_options.h"
 #include <stdio.h>
+#include <time.h>
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
 #endif /* HAVE_STDLIB_H */
@@ -238,7 +239,10 @@ main (int argc, char *argv[])
 {
   struct MHD_PostProcessor *postprocessor;
   (void) argc; (void) argv;
-
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
+  double globalTime = 0.0;
   if (1)
   {
     found = 0;
@@ -254,16 +258,29 @@ main (int argc, char *argv[])
     postprocessor->buffer_size = 0x1000;
     postprocessor->state = PP_Init;
     postprocessor->skip_rn = RN_Inactive;
-    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor("xxxx=xxxx"), 9))
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    globalTime += cpu_time_used;
+    _TPtr<char> _T_str =  StaticStrToTStr("xxxx=xxxx");
+    start = clock();
+    if (MHD_YES != MHD_post_process (postprocessor, _T_str, 9))
       exit (1);
-    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor("&yyyy=yyyy&zzzz=&aaaa="),
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    globalTime += cpu_time_used;
+    t_free(_T_str);
+    _T_str = StaticStrToTStr("&yyyy=yyyy&zzzz=&aaaa=");
+    start = clock();
+    if (MHD_YES != MHD_post_process (postprocessor, _T_str,
                                      22))
       exit (1);
-    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor(""), 0))
+    t_free(_T_str);
+    if (MHD_YES != MHD_post_process (postprocessor, StaticStrToTStr(""), 0))
       exit (1);
     if (MHD_YES !=
         MHD_destroy_post_processor (postprocessor))
       exit (3);
+    t_free(GlobalTaintedAdaptorStr); //globalTaintedAdaptorStr is a global variable in the checkcbox header file that StaticStrToTStr allocates to
     if (found != 15)
       exit (2);
   }
@@ -282,14 +299,19 @@ main (int argc, char *argv[])
     postprocessor->buffer_size = 0x1000;
     postprocessor->state = PP_Init;
     postprocessor->skip_rn = RN_Inactive;
-    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor("text=text%2"), 11))
+    _TPtr<char> _T_str = StaticStrToTStr("text=text%2");
+    if (MHD_YES != MHD_post_process (postprocessor, _T_str, 11))
       exit (1);
-    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor("C+text"), 6))
+    t_free(_T_str);
+    _T_str = StaticStrToTStr("C+text");
+    if (MHD_YES != MHD_post_process (postprocessor, _T_str, 6))
       exit (1);
-    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor(""), 0))
+    t_free(_T_str);
+    if (MHD_YES != MHD_post_process (postprocessor, StaticStrToTStr(""), 0))
       exit (1);
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
       exit (1);
+    t_free(GlobalTaintedAdaptorStr);
     if (found != 1)
       exit (4);
   }
@@ -505,11 +527,16 @@ main (int argc, char *argv[])
         "xxxx%2Cxxxxxxxxx%2C%2Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx%2Cxxxxxx%"
         "2C%2C%2Cxxxxxxxxx%2Cxxxxxxxx%2C"
         "&y=y&z=z";
-
-      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk, strlen (chunk)), strlen (chunk) ))
+      end = clock();
+      cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+      globalTime += cpu_time_used;
+      _TPtr<char> _T_chunk = StaticStrToTStr(chunk);
+      start = clock();
+      if (MHD_YES != MHD_post_process (postprocessor, _T_chunk, t_strlen (_T_chunk) ))
         exit (1);
+        t_free(_T_chunk);
     }
-    if (MHD_YES != MHD_post_process (postprocessor, StaticCheckedToTStrAdaptor(""), 0))
+    if (MHD_YES != MHD_post_process (postprocessor, StaticStrToTStr(""), 0))
       exit (1);
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
       exit (1);
@@ -683,9 +710,14 @@ main (int argc, char *argv[])
     postprocessor->skip_rn = RN_Inactive;
     for (unsigned i = 0; i < ARRAY_LENGTH (chunks); ++i)
     {
-      const char *chunk = chunks[i];
-      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk, strlen (chunk)), strlen (chunk) ))
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+        globalTime += cpu_time_used;
+      _TPtr<char> _T_chunk = StaticStrToTStr(chunks[i]);
+      start = clock();
+      if (MHD_YES != MHD_post_process (postprocessor, _T_chunk, t_strlen (_T_chunk) ))
         exit (1);
+      t_free(_T_chunk);
     }
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
       exit (1);
@@ -719,16 +751,24 @@ main (int argc, char *argv[])
     postprocessor->skip_rn = RN_Inactive;
     for (unsigned i = 0; i < ARRAY_LENGTH (chunks); ++i)
     {
-      const char *chunk = chunks[i];
-      if (MHD_YES != MHD_post_process (postprocessor, StaticUncheckedToTStrAdaptor(chunk, strlen (chunk)), strlen (chunk) ))
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+        globalTime += cpu_time_used;
+        _TPtr<char> _T_chunk = StaticStrToTStr(chunks[i]);
+        start = clock();
+      if (MHD_YES != MHD_post_process (postprocessor, _T_chunk, t_strlen (_T_chunk) ))
         exit (1);
+       t_free(_T_chunk);
     }
     if (MHD_YES != MHD_destroy_post_processor (postprocessor))
       exit (1);
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    globalTime += cpu_time_used;
+    fprintf(stderr, "Time taken for test_postprocessor_md : %f\n", globalTime);
     if (found != 12)
       return 7;
   }
 
-  t_free(GlobalTaintedAdaptorStr);
   return EXIT_SUCCESS;
 }

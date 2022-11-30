@@ -33,6 +33,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <time.h>
 #ifndef WINDOWS
 #include <unistd.h>
 #endif
@@ -1376,6 +1377,9 @@ int
 main (int argc,
       char *const *argv)
 {
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   unsigned int error_count = 0;
   unsigned int res;
 
@@ -1604,5 +1608,8 @@ main (int argc,
   if (test_tls && (TLS_LIB_GNUTLS == use_tls_tool))
     gnutls_global_deinit ();
 #endif /* HTTPS_SUPPORT */
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  fprintf(stderr, "Time taken for test_upgrade : %f\n", cpu_time_used);
   return error_count != 0;       /* 0 == pass */
 }
