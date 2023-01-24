@@ -359,7 +359,9 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
                _T_n_prnt (decoded, decoded_size), (unsigned) decoded_size,
                (unsigned) decoded_size);
     }
+#ifdef WASM_SBX
     t_free(is_broken);
+#endif
   }
 
   /* check MHD_str_pct_decode_lenient_n_() with large out buffer */
@@ -421,7 +423,9 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
                _T_n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
                (unsigned) decoded_size);
     }
+#ifdef WASM_SBX
     t_free(is_broken);
+#endif
   }
 
   if (t_strlen (encoded) == encoded_len)
@@ -565,8 +569,10 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
     fprintf (stderr,
              "The check is at line: %u\n\n", line_num);
   }
+#ifdef WASM_SBX
   t_free(encoded);
   t_free(decoded);
+#endif
   return ret;
 }
 
@@ -916,7 +922,9 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
                _T_n_prnt (decoded, decoded_size), (unsigned) decoded_size,
                (unsigned) decoded_size);
     }
+#ifdef WASM_SBX
     t_free(is_broken);
+#endif
   }
 
   /* check MHD_str_pct_decode_lenient_n_() with large out buffer */
@@ -978,7 +986,9 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
                _T_n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
                (unsigned) decoded_size);
     }
+#ifdef WASM_SBX
     t_free(is_broken);
+#endif
   }
 
   if (t_strlen (encoded) == encoded_len)
@@ -1085,7 +1095,9 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
                  _T_n_prnt (decoded, decoded_size),
                  (unsigned) decoded_size);
       }
+#ifdef WASM_SBX
       t_free(is_broken);
+#endif
     }
   }
 
@@ -1094,8 +1106,10 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
     fprintf (stderr,
              "The check is at line: %u\n\n", line_num);
   }
+#ifdef WASM_SBX
   t_free(encoded);
   t_free(decoded);
+#endif
   return ret;
 }
 

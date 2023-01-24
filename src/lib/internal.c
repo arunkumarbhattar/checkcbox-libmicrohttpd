@@ -142,7 +142,38 @@ MHD_unescape_plus (char *arg)
 size_t
 MHD_http_unescape (_TPtr<char> val)
 {
+#ifdef WASM_SBX
     return MHD_http_unescape_2(val);
+#else
+     _TPtr<char> rpos = val;
+     _TPtr<char> wpos = val;
+
+     while ('\0' != *rpos)
+     {
+         uint32_t num;
+         switch (*rpos)
+         {
+             case '%':
+                 if (2 == MHD_strx_to_uint32_n_ (rpos + 1,
+                                                 2,
+                                                 &num))
+                 {
+                     *wpos = (char) ((unsigned char) num);
+                     wpos++;
+                     rpos += 3;
+                     break;
+                 }
+                 /* TODO: add bad sequence handling */
+                 /* intentional fall through! */
+             default:
+                 *wpos = *rpos;
+                 wpos++;
+                 rpos++;
+         }
+     }
+     *wpos = '\0'; /* add 0-terminator */
+     return wpos - val; /* = strlen(val) */
+#end
 }
 
 _Tainted size_t

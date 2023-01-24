@@ -526,7 +526,9 @@ test_multipart_splits (void)
       return (unsigned int) splitpoint;
     }
   }
+#ifdef WASM_SBX
   t_free(_T_FORM_DATA);
+#endif
   return 0;
 }
 
