@@ -17,6 +17,21 @@
      Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
      Boston, MA 02110-1301, USA.
 */
+#ifdef WASM_SBX
+#define __malloc__(S) t_malloc(S)
+#elif HEAP_SBX
+#define __malloc__(S) hoard_malloc(S)
+#else
+#define __malloc__(S) malloc(S)
+#endif
+
+#ifdef WASM_SBX
+#define __free__(P) t_free(P)
+#elif HEAP_SBX
+#define __free__(P) hoard_free(P)
+#else
+#define __free__(P) free(P)
+#endif
 /**
  * @file test_client_put_stop.c
  * @brief  Testcase for handling of clients aborts
@@ -1731,7 +1746,7 @@ performTestQueries (struct MHD_Daemon *d, uint16_t d_port,
   ahc_param->rp_data = "~";
   ahc_param->rp_data_size = 1;
   //Marshall qParam.req_body_size into ahc_param->req_body
-  ahc_param->req_body = (_TPtr<char >)t_malloc (qParam.req_body_size);
+  ahc_param->req_body = (_TPtr<char >)__malloc__ (qParam.req_body_size);
   t_memcpy ((_TPtr<void> ) ahc_param->req_body, qParam.req_body, qParam.req_body_size);
   ahc_param->req_body_size = qParam.req_body_size;
 

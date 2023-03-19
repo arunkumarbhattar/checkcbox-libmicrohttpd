@@ -39,6 +39,22 @@
 #define MHD_STATICSTR_LEN_(macro) (sizeof(macro) / sizeof(char) - 1)
 #endif /* ! MHD_STATICSTR_LEN_ */
 
+#ifdef WASM_SBX
+#define __malloc__(S) t_malloc(S)
+#elif HEAP_SBX
+#define __malloc__(S) hoard_malloc(S)
+#else
+#define __malloc__(S) malloc(S)
+#endif
+
+#ifdef WASM_SBX
+#define __free__(P) t_free(P)
+#elif HEAP_SBX
+#define __free__(P) hoard_free(P)
+#else
+#define __free__(P) free(P)
+#endif
+
 _Tainted size_t
 MHD_str_pct_decode_lenient_n_ (_TPtr<const char> pct_encoded,
                                size_t pct_encoded_len,
@@ -157,7 +173,7 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
 {
   static const char fill_chr = '#';
   static _TPtr<char> buf = NULL;
-  buf = (_TPtr<char>)t_malloc(TEST_BIN_MAX_SIZE*sizeof(char));
+  buf = (_TPtr<char>)__malloc__(TEST_BIN_MAX_SIZE*sizeof(char));
   size_t res_size;
   unsigned int ret;
   //Perform Marshalling here
@@ -290,7 +306,7 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
   if (1)
   {
     unsigned int check_res = 0;
-    _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+    _TPtr<bool> is_broken = (_TPtr<bool>)__malloc__(sizeof(bool));
     *is_broken = true;
 
     t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
@@ -359,16 +375,14 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
                _T_n_prnt (decoded, decoded_size), (unsigned) decoded_size,
                (unsigned) decoded_size);
     }
-#ifdef WASM_SBX
-    t_free(is_broken);
-#endif
+    __free__(is_broken);
   }
 
   /* check MHD_str_pct_decode_lenient_n_() with large out buffer */
   if (1)
   {
     unsigned int check_res = 0;
-    _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+    _TPtr<bool> is_broken = (_TPtr<bool>)__malloc__(sizeof(bool));
     *is_broken = true;
 
     t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
@@ -423,9 +437,7 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
                _T_n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
                (unsigned) decoded_size);
     }
-#ifdef WASM_SBX
-    t_free(is_broken);
-#endif
+    __free__(is_broken);
   }
 
   if (t_strlen (encoded) == encoded_len)
@@ -495,7 +507,7 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
     if (1)
     {
       unsigned int check_res = 0;
-      _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+      _TPtr<bool> is_broken = (_TPtr<bool>)__malloc__(sizeof(bool));
       *is_broken = true;
 
       t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
@@ -569,10 +581,8 @@ expect_decoded_n (const char *const encoded_checked, const size_t encoded_len,
     fprintf (stderr,
              "The check is at line: %u\n\n", line_num);
   }
-#ifdef WASM_SBX
-  t_free(encoded);
-  t_free(decoded);
-#endif
+  __free__(encoded);
+  __free__(decoded);
   return ret;
 }
 
@@ -771,7 +781,7 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
 {
   static const char fill_chr = '#';
   static _TPtr<char> buf = NULL;
-  buf = (_TPtr<char>)t_malloc(TEST_BIN_MAX_SIZE*sizeof(char));
+  buf = (_TPtr<char>)__malloc__(TEST_BIN_MAX_SIZE*sizeof(char));
   size_t res_size;
   unsigned int ret;
   //Perform Marshalling here
@@ -853,7 +863,7 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
   if (1)
   {
     unsigned int check_res = 0;
-    _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+    _TPtr<bool> is_broken = (_TPtr<bool>)__malloc__(sizeof(bool));
     *is_broken = false;
 
     t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
@@ -922,16 +932,14 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
                _T_n_prnt (decoded, decoded_size), (unsigned) decoded_size,
                (unsigned) decoded_size);
     }
-#ifdef WASM_SBX
-    t_free(is_broken);
-#endif
+    __free__(is_broken);
   }
 
   /* check MHD_str_pct_decode_lenient_n_() with large out buffer */
   if (1)
   {
     unsigned int check_res = 0;
-    _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+    _TPtr<bool> is_broken = (_TPtr<bool>)__malloc__(sizeof(bool));
     *is_broken = false;
 
     t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
@@ -986,9 +994,7 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
                _T_n_prnt (decoded, decoded_size), (unsigned) (encoded_len + 1),
                (unsigned) decoded_size);
     }
-#ifdef WASM_SBX
-    t_free(is_broken);
-#endif
+    __free__(is_broken);
   }
 
   if (t_strlen (encoded) == encoded_len)
@@ -1029,7 +1035,7 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
     if (1)
     {
       unsigned int check_res = 0;
-      _TPtr<bool> is_broken = (_TPtr<bool>)t_malloc(sizeof(bool));
+      _TPtr<bool> is_broken = (_TPtr<bool>)__malloc__(sizeof(bool));
        *is_broken = false;
 
       t_memset (buf, fill_chr, TEST_BIN_MAX_SIZE); /* Fill buffer with some character */
@@ -1095,9 +1101,7 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
                  _T_n_prnt (decoded, decoded_size),
                  (unsigned) decoded_size);
       }
-#ifdef WASM_SBX
-      t_free(is_broken);
-#endif
+      __free__(is_broken);
     }
   }
 
@@ -1106,10 +1110,8 @@ expect_decoded_bad_n (const char *const encoded_checked, const size_t encoded_le
     fprintf (stderr,
              "The check is at line: %u\n\n", line_num);
   }
-#ifdef WASM_SBX
-  t_free(encoded);
-  t_free(decoded);
-#endif
+  __free__(encoded);
+  __free__(decoded);
   return ret;
 }
 

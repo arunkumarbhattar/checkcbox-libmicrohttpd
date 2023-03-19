@@ -18,6 +18,22 @@
      Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
      Boston, MA 02110-1301, USA.
 */
+#ifdef WASM_SBX
+#define __malloc__(S) t_malloc(S)
+#elif HEAP_SBX
+#define __malloc__(S) hoard_malloc(S)
+#else
+#define __malloc__(S) malloc(S)
+#endif
+
+#ifdef WASM_SBX
+#define __free__(P) t_free(P)
+#elif HEAP_SBX
+#define __free__(P) hoard_free(P)
+#else
+#define __free__(P) free(P)
+#endif
+
 /**
  * @file test_postprocessor.c
  * @brief  Testcase for postprocessor
@@ -275,7 +291,7 @@ test_urlencoding_case (unsigned int want_start,
                  "i: %u. step: %u.\n"
                  "Line: %u\n", (unsigned) i, (unsigned) step,
                  (unsigned int) __LINE__);
-        t_free(tmp);
+        __free__(tmp);
         exit (49);
       }
     }
@@ -431,7 +447,7 @@ test_multipart_garbage (void)
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     globalTime += cpu_time_used;
-    t_free(_T_xdata);
+    __free__(_T_xdata);
     _T_xdata = StaticUncheckedToTStrAdaptor(&xdata[splitpoint], size - splitpoint);
     start = clock();
     if (MHD_YES != MHD_post_process (pp, _T_xdata, size - splitpoint))
@@ -454,7 +470,7 @@ test_multipart_garbage (void)
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     globalTime += cpu_time_used;
-    t_free(_T_xdata);
+    __free__(_T_xdata);
     start = clock();
   }
 
@@ -503,7 +519,7 @@ test_multipart_splits (void)
                "Test failed in line %u at point %d\n",
                (unsigned int) __LINE__,
                (int) splitpoint);
-      t_free(_T_FORM_DATA);
+      __free__(_T_FORM_DATA);
       exit (49);
     }
     if (MHD_YES != MHD_post_process (pp, &_T_FORM_DATA[splitpoint],
@@ -513,7 +529,7 @@ test_multipart_splits (void)
                "Test failed in line %u at point %u\n",
                (unsigned int) __LINE__,
                (unsigned int) splitpoint);
-      t_free(_T_FORM_DATA);
+      __free__(_T_FORM_DATA);
       exit (49);
     }
     MHD_destroy_post_processor (pp);
@@ -526,9 +542,7 @@ test_multipart_splits (void)
       return (unsigned int) splitpoint;
     }
   }
-#ifdef WASM_SBX
-  t_free(_T_FORM_DATA);
-#endif
+  __free__(_T_FORM_DATA);
   return 0;
 }
 
@@ -591,7 +605,7 @@ test_multipart (void)
              (unsigned int) __LINE__);
     return 2;
   }
-  t_free(_T_FORM_START);
+  __free__(_T_FORM_START);
   return 0;
 }
 
@@ -653,7 +667,7 @@ test_nested_multipart (void)
              (unsigned int) __LINE__);
     return 4;
   }
-  t_free(_T_FORM_NESTED_DATA);
+  __free__(_T_FORM_NESTED_DATA);
   return 0;
 }
 
@@ -707,7 +721,7 @@ test_overflow (void)
                "Line: %u\n", (unsigned int) __LINE__);
       exit (50);
     }
-    buf = (_TPtr<char>)t_malloc (i);
+    buf = (_TPtr<char>)__malloc__ (i);
     if (NULL == buf)
       return 1;
     t_memset (buf, 'A', i);
@@ -725,7 +739,7 @@ test_overflow (void)
         break;
       j += delta;
     }
-    t_free (buf);
+    __free__ (buf);
     MHD_destroy_post_processor (pp);
   }
   return 0;
@@ -784,7 +798,7 @@ test_empty_key (void)
     }
     MHD_destroy_post_processor (pp);
   }
-  t_free(_T_form_data);
+  __free__(_T_form_data);
   return 0;
 }
 
@@ -870,7 +884,7 @@ test_double_value (void)
       return 1;
     }
   }
-  t_free(_T_form_data);
+  __free__(_T_form_data);
   return 0;
 }
 

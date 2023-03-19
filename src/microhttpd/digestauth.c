@@ -50,6 +50,22 @@
 #include "mhd_assert.h"
 #include <checkcbox_extensions.h>
 
+#ifdef WASM_SBX
+#define __malloc__(S) t_malloc(S)
+#elif HEAP_SBX
+#define __malloc__(S) hoard_malloc(S)
+#else
+#define __malloc__(S) malloc(S)
+#endif
+
+#ifdef WASM_SBX
+#define __free__(P) t_free(P)
+#elif HEAP_SBX
+#define __free__(P) hoard_free(P)
+#else
+#define __free__(P) free(P)
+#endif
+
 /**
  * Allow re-use of the nonce-nc map array slot after #REUSE_TIMEOUT seconds,
  * if this slot is needed for the new nonce, while the old nonce was not used
@@ -1079,8 +1095,8 @@ get_rq_extended_uname_copy_z (const char *uname_ext, size_t uname_ext_len,
   w = MHD_str_pct_decode_strict_n_ (_T_uname_ext, uname_ext_len - r,
                                     _T_buf, buf_size);
   t_strncpy(buf, _T_buf, w);
-  t_free(_T_buf);
-  t_free(_T_uname_ext);
+  __free__(_T_buf);
+  __free__(_T_uname_ext);
   if ((0 == w) && (0 != uname_ext_len - r))
     return -1; /* Broken percent encoding */
   buf[w] = 0; /* Zero terminate the result */
@@ -2749,7 +2765,7 @@ digest_auth_check_all_inner (struct MHD_Connection *connection,
           (0 != t_memcmp (username, StaticUncheckedToTStrAdaptor(r_uname, username_len), username_len)))
       {
           if(GlobalTaintedAdaptorStr!=NULL)
-              t_free(GlobalTaintedAdaptorStr);
+              __free__(GlobalTaintedAdaptorStr);
           return MHD_DAUTH_WRONG_USERNAME;
       }
     }
@@ -3030,7 +3046,7 @@ digest_auth_check_all_inner (struct MHD_Connection *connection,
     /* The 'nonce' was generated in the same conditions */
   }
   if (GlobalTaintedAdaptorStr!= NULL)
-      t_free(GlobalTaintedAdaptorStr);
+      __free__(GlobalTaintedAdaptorStr);
   return MHD_DAUTH_OK;
 }
 

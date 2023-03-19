@@ -17,6 +17,23 @@
      Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+#ifdef WASM_SBX
+#define __malloc__(S) t_malloc(S)
+#elif HEAP_SBX
+#define __malloc__(S) hoard_malloc(S)
+#else
+#define __malloc__(S) malloc(S)
+#endif
+
+#ifdef WASM_SBX
+#define __free__(P) t_free(P)
+#elif HEAP_SBX
+#define __free__(P) hoard_free(P)
+#else
+#define __free__(P) free(P)
+#endif
+
+
 /**
  * @file postprocessor.c
  * @brief  Methods for parsing POST data
@@ -31,7 +48,7 @@
 #include "mhd_assert.h"
 #include <checkcbox_extensions.h>
 #include <string_tainted.h>
-
+#include <stdlib_tainted.h>
 /**
  * Size of on-stack buffer that we use for un-escaping of the value.
  * We use a pretty small value to be nice to the stack on embedded
@@ -236,12 +253,19 @@ process_value (struct MHD_PostProcessor *pp,
       MHD_unescape_plus (xbuf);
 
 #ifdef WASM_SBX
-        _TPtr<char> _T_xbuf = t_malloc(strlen(xbuf)*sizeof(char));
+        _TPtr<char> _T_xbuf = (_TPtr<char>)t_malloc(strlen(xbuf)*sizeof(char));
         t_strcpy(_T_xbuf, xbuf);
         xoff = MHD_http_unescape (_T_xbuf);
         t_strncpy(xbuf, _T_xbuf,xoff);
         xbuf[xoff] = '\0';
         t_free(_T_xbuf);
+#elif HEAP_SBX
+        _TPtr<char> _T_xbuf = (_TPtr<char>)hoard_malloc(strlen(xbuf)*sizeof(char));
+        t_strcpy(_T_xbuf, xbuf);
+        xoff = MHD_http_unescape (_T_xbuf);
+        t_strncpy(xbuf, _T_xbuf,xoff);
+        xbuf[xoff] = '\0';
+        hoard_free(_T_xbuf);
 #else
 #pragma TLIB_SCOPE push
 #pragma TLIB_SCOPE on
@@ -515,6 +539,14 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
           t_strncpy(kbuf, _T_kbuf, cpyLen);
           kbuf[cpyLen] = '\0';
           t_free(_T_kbuf);
+#elif HEAP_SBX
+          //since kbuf is NULL terminated, we can marshall it -->
+          _TPtr<char> _T_kbuf = (_TPtr<char>)hoard_malloc(strlen(kbuf)*sizeof(char));
+          t_strcpy(_T_kbuf, kbuf);
+          int cpyLen = MHD_http_unescape (_T_kbuf);
+          t_strncpy(kbuf, _T_kbuf, cpyLen);
+          kbuf[cpyLen] = '\0';
+          hoard_free(_T_kbuf);
 #else
 #pragma TLIB_SCOPE push
 #pragma TLIB_SCOPE on
@@ -600,6 +632,13 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
         t_strncpy(kbuf, _T_kbuf, cpyLen);
         kbuf[cpyLen] = '\0';
         t_free(_T_kbuf);
+#elif HEAP_SBX
+        _TPtr<char> _T_kbuf =  (_TPtr<char>)hoard_malloc(strlen(kbuf)*sizeof(char));
+        t_strcpy(_T_kbuf, kbuf);
+        int cpyLen = MHD_http_unescape (_T_kbuf);
+        t_strncpy(kbuf, _T_kbuf, cpyLen);
+        kbuf[cpyLen] = '\0';
+        hoard_free(_T_kbuf);
 #else
 #pragma TLIB_SCOPE push
 #pragma TLIB_SCOPE on

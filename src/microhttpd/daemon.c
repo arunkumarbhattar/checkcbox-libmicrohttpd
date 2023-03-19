@@ -19,6 +19,22 @@
 
 */
 
+#ifdef WASM_SBX
+#define __malloc__(S) t_malloc(S)
+#elif HEAP_SBX
+#define __malloc__(S) hoard_malloc(S)
+#else
+#define __malloc__(S) malloc(S)
+#endif
+
+#ifdef WASM_SBX
+#define __free__(P) t_free(P)
+#elif HEAP_SBX
+#define __free__(P) hoard_free(P)
+#else
+#define __free__(P) free(P)
+#endif
+
 /**
  * @file microhttpd/daemon.c
  * @brief  A minimal-HTTP server library
@@ -5728,8 +5744,8 @@ unescape_wrapper (void *cls,
                   struct MHD_Connection *connection,
                   char* val)
 {
-  _TPtr<bool> broken = (_TPtr<bool>)t_malloc(sizeof(bool));
-  _TPtr<char> _T_val = (_TPtr<char>)t_malloc(strlen(val)*sizeof(char));
+  _TPtr<bool> broken = (_TPtr<bool>)__malloc__(sizeof(bool));
+  _TPtr<char> _T_val = (_TPtr<char>)__malloc__(strlen(val)*sizeof(char));
   t_strcpy(_T_val, val);
   size_t res;
   (void) cls; /* Mute compiler warning. */

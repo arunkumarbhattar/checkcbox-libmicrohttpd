@@ -505,13 +505,23 @@ main (int argc, char *argv[])
                     "xxxx%2Cxxxxxxxxx%2C%2Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx%2Cxxxxxx%"
                     "2C%2C%2Cxxxxxxxxx%2Cxxxxxxxx%2C"
                     "&y=y&z=z";
+#ifdef WASM_SBX
+            _TPtr<char> tchunk = (_TPtr<char>)StaticStrToTStr(chunk);
+#elif HEAP_SBX
+            _TPtr<char> tchunk = (_TPtr<char>)StaticStrToTStr(chunk);
+#else
 #pragma TLIB_SCOPE push
 #pragma TLIB_SCOPE on
             _TPtr<char> tchunk = (_TPtr<char>)chunk;
 #pragma TLIB_SCOPE pop
-
+#endif
             if (MHD_YES != MHD_post_process (postprocessor, tchunk, strlen (chunk) ))
                 exit (1);
+#ifdef WASM_SBX
+            t_free(tchunk);
+#elif HEAP_SBX
+            hoard_free(tchunk);
+#endif
         }
         if (MHD_YES != MHD_post_process (postprocessor, StaticStrToTStr(""), 0))
             exit (1);
@@ -688,14 +698,25 @@ main (int argc, char *argv[])
         for (unsigned i = 0; i < ARRAY_LENGTH (chunks); ++i)
         {
             const char *chunk = chunks[i];
+#ifdef WASM_SBX
+            _TPtr<char> tchunk = (_TPtr<char>)StaticStrToTStr(chunk);
+#elif HEAP_SBX
+            _TPtr<char> tchunk = (_TPtr<char>)StaticStrToTStr(chunk);
+#else
 #pragma TLIB_SCOPE push
 #pragma TLIB_SCOPE on
             _TPtr<char> tchunk = (_TPtr<char>)chunk;
 #pragma TLIB_SCOPE pop
+#endif
             if (MHD_YES != MHD_post_process (postprocessor, tchunk, strlen (chunk) ))
                 exit (1);
-
+#ifdef WASM_SBX
+            t_free(tchunk);
+#elif HEAP_SBX
+            hoard_free(tchunk);
+#endif
         }
+
         if (MHD_YES != MHD_destroy_post_processor (postprocessor))
             exit (1);
         if (found != 1)
@@ -729,12 +750,23 @@ main (int argc, char *argv[])
         for (unsigned i = 0; i < ARRAY_LENGTH (chunks); ++i)
         {
             const char *chunk = chunks[i];
+#ifdef WASM_SBX
+            _TPtr<char> tchunk = (_TPtr<char>)StaticStrToTStr(chunk);
+#elif HEAP_SBX
+            _TPtr<char> tchunk = (_TPtr<char>)StaticStrToTStr(chunk);
+#else
 #pragma TLIB_SCOPE push
 #pragma TLIB_SCOPE on
             _TPtr<char> tchunk = (_TPtr<char>)chunk;
 #pragma TLIB_SCOPE pop
+#endif
             if (MHD_YES != MHD_post_process (postprocessor, tchunk, strlen (chunk) ))
                 exit (1);
+#ifdef WASM_SBX
+            t_free(tchunk);
+#elif HEAP_SBX
+            hoard_free(tchunk);
+#endif
         }
         if (MHD_YES != MHD_destroy_post_processor (postprocessor))
             exit (1);
