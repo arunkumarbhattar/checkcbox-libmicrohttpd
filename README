@@ -160,6 +160,10 @@ For CHECKCBOX developmental use -->
 3.) Finally your executables would look for the above shared object file --> 
 --> add the <Checkcbox_LIBS> directory to LD_LIBRARY_PATH
 
+./configure --enable-tests CC=/home/arun/Desktop/CheckCBox_Compiler/llvm/cmake-build-debug/bin/clang CFLAGS="-g -fPIC -fheapsbx -DHEAP_SBX" 
+LDFLAGS="-L/home/arun/Desktop/untouched/checkcbox-libmicrohttpd/HoardLib -L/home/arun/Desktop/untouched/checkcbox-libmicrohttpd/NOOP_SBX"
+LIBS="-ldl -lstdc++ -lhoard -lprofile -lSBX_CON_LIB"
+
 https://github.com/Karlson2k/libmicrohttpd/commit/a110ae6276660bee3caab30e9ff3f12f85cf3241# --> Triggers 2 Buffer overflows when you shoot make check (runs tests)
 
 test-suite.log before checkcbox -->
