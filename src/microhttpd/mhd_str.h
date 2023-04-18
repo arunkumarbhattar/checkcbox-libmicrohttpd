@@ -719,7 +719,7 @@ _Tainted size_t
 _T_MHD_str_unquote (_TPtr<const char> quoted,
                  size_t quoted_len,
                  _TPtr<char> result);
-
+#ifdef WASM_SBX_CODE
 _TLIB size_t w2c__T_MHD_str_unquote(void*, unsigned int, size_t, unsigned int);
 _TLIB size_t w2c__T_MHD_str_quote(void* , unsigned int,
                             size_t, unsigned int, size_t);
@@ -744,7 +744,7 @@ _TLIB size_t w2c_MHD_str_pct_decode_in_place_strict_(void*, unsigned int);
 _TLIB size_t w2c_MHD_str_pct_decode_in_place_lenient_(void*,
 unsigned int,
 unsigned int);
-
+#endif
 #endif /* DAUTH_SUPPORT */
 
 #if defined(DAUTH_SUPPORT) || defined(BAUTH_SUPPORT)

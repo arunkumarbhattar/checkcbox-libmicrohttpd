@@ -172,7 +172,7 @@ MHD_http_unescape (_TPtr<char> val)
      return wpos - val; /* = strlen(val) */
 }
 
-#ifdef WASM_SBX
+#ifdef WASM_SBX_CODE
 size_t
 MHD_http_unescape (_TPtr<char> val)
 {
