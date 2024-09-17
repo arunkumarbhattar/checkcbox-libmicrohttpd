@@ -31,7 +31,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "mhd_compat.h"
-
+#include <checkcbox_extensions.h>
 #ifndef WINDOWS
 #include <unistd.h>
 #endif
@@ -260,7 +260,7 @@ test_urlencoding_case (unsigned int want_start,
     {
       size_t left = size - i;
       if (MHD_YES != MHD_post_process (pp,
-                                       &url_data[i],
+                                       StaticUncheckedToTStrAdaptor(&url_data[i], ((left > step) ? step : left)),
                                        (left > step) ? step : left))
       {
         fprintf (stderr, "Failed to process the data.\n"
@@ -284,6 +284,7 @@ test_urlencoding_case (unsigned int want_start,
       errors++;
     }
   }
+  t_free(GlobalTaintedAdaptorStr);
   return errors;
 }
 
@@ -406,7 +407,7 @@ test_multipart_garbage (void)
                "Line: %u\n", (unsigned int) __LINE__);
       exit (50);
     }
-    if (MHD_YES != MHD_post_process (pp, xdata, splitpoint))
+    if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(xdata, splitpoint), splitpoint))
     {
       fprintf (stderr,
                "Test failed in line %u at point %d\n",
@@ -414,7 +415,7 @@ test_multipart_garbage (void)
                (int) splitpoint);
       exit (49);
     }
-    if (MHD_YES != MHD_post_process (pp, &xdata[splitpoint], size - splitpoint))
+    if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(&xdata[splitpoint], size - splitpoint), size - splitpoint))
     {
       fprintf (stderr,
                "Test failed in line %u at point %u\n",
@@ -432,6 +433,7 @@ test_multipart_garbage (void)
       return (unsigned int) splitpoint;
     }
   }
+  t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 
@@ -467,7 +469,7 @@ test_multipart_splits (void)
                "Line: %u\n", (unsigned int) __LINE__);
       exit (50);
     }
-    if (MHD_YES != MHD_post_process (pp, FORM_DATA, splitpoint))
+    if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(FORM_DATA, splitpoint), splitpoint))
     {
       fprintf (stderr,
                "Test failed in line %u at point %d\n",
@@ -475,7 +477,7 @@ test_multipart_splits (void)
                (int) splitpoint);
       exit (49);
     }
-    if (MHD_YES != MHD_post_process (pp, &FORM_DATA[splitpoint],
+    if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(&FORM_DATA[splitpoint], size-splitpoint),
                                      size - splitpoint))
     {
       fprintf (stderr,
@@ -494,6 +496,7 @@ test_multipart_splits (void)
       return (unsigned int) splitpoint;
     }
   }
+  t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 
@@ -532,7 +535,7 @@ test_multipart (void)
   {
     delta = 1 + ((size_t) MHD_random_ ()) % (size - i);
     if (MHD_YES != MHD_post_process (pp,
-                                     &FORM_DATA[i],
+                                     StaticUncheckedToTStrAdaptor(&FORM_DATA[i], delta),
                                      delta))
     {
       fprintf (stderr, "Failed to process the data.\n"
@@ -551,6 +554,7 @@ test_multipart (void)
              (unsigned int) __LINE__);
     return 2;
   }
+  t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 
@@ -589,7 +593,7 @@ test_nested_multipart (void)
   {
     delta = 1 + ((size_t) MHD_random_ ()) % (size - i);
     if (MHD_YES != MHD_post_process (pp,
-                                     &FORM_NESTED_DATA[i],
+                                     StaticUncheckedToTStrAdaptor(&FORM_NESTED_DATA[i], delta),
                                      delta))
     {
       fprintf (stderr, "Failed to process the data.\n"
@@ -608,6 +612,7 @@ test_nested_multipart (void)
              (unsigned int) __LINE__);
     return 4;
   }
+  t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 
@@ -674,7 +679,7 @@ test_overflow (void)
         delta = i - j;
       if (MHD_NO ==
           MHD_post_process (pp,
-                            &buf[j],
+                            StaticUncheckedToTStrAdaptor(&buf[j], delta),
                             delta))
         break;
       j += delta;
@@ -682,6 +687,7 @@ test_overflow (void)
     free (buf);
     MHD_destroy_post_processor (pp);
   }
+    t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 
@@ -721,7 +727,7 @@ test_empty_key (void)
     for (i = 0; size > i; i += step)
     {
       if (MHD_NO != MHD_post_process (pp,
-                                      form_data + i,
+                                      StaticUncheckedToTStrAdaptor(form_data + i, (step > size - i) ? (size - i) : step),
                                       (step > size - i) ? (size - i) : step))
       {
         fprintf (stderr, "Succeed to process the broken data.\n"
@@ -733,6 +739,7 @@ test_empty_key (void)
     }
     MHD_destroy_post_processor (pp);
   }
+    t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 
@@ -775,7 +782,7 @@ test_double_value (void)
     for (i = 0; size > i; i += step)
     {
       if (MHD_NO != MHD_post_process (pp,
-                                      form_data + i,
+                                      StaticUncheckedToTStrAdaptor(form_data + i, (step > size - i) ? (size - i) : step),
                                       (step > size - i) ? (size - i) : step))
       {
         if (safe_size == i + step)
@@ -813,6 +820,7 @@ test_double_value (void)
       return 1;
     }
   }
+    t_free(GlobalTaintedAdaptorStr);
   return 0;
 }
 

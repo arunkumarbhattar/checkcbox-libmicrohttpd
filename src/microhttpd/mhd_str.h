@@ -320,8 +320,8 @@ MHD_strx_to_uint64_ (const char *str,
  *         zero if no digit is found, resulting value is larger
  *         then possible to store in uint64_t or @a out_val is NULL
  */
-size_t
-MHD_strx_to_uint64_n_ (const char *str,
+_TLIB size_t
+MHD_strx_to_uint64_n_ (const char* str : itype(_TPtr<const char>),
                        size_t maxlen,
                        uint64_t *out_val);
 
@@ -524,10 +524,10 @@ MHD_hex_to_bin (const char *hex,
  *         by less than two hexadecimal digits) or output buffer is too
  *         small to hold the result
  */
-size_t
-MHD_str_pct_decode_strict_n_ (const char *pct_encoded,
+_Tainted size_t
+MHD_str_pct_decode_strict_n_ (_TPtr<const char> pct_encoded,
                               size_t pct_encoded_len,
-                              char *decoded,
+                              _TPtr<char> decoded,
                               size_t buf_size);
 
 /**
@@ -553,11 +553,11 @@ MHD_str_pct_decode_strict_n_ (const char *pct_encoded,
  *         zero if output buffer is too small to hold the result
  */
 size_t
-MHD_str_pct_decode_lenient_n_ (const char *pct_encoded,
-                               size_t pct_encoded_len,
-                               char *decoded,
-                               size_t buf_size,
-                               bool *broken_encoding);
+MMHD_str_pct_decode_lenient_n_ (_TPtr<const char> pct_encoded,
+                    size_t pct_encoded_len,
+                    _TPtr<char> decoded,
+                    size_t buf_size,
+                    _TPtr<bool> broken_encoding);
 
 
 /**
@@ -573,8 +573,8 @@ MHD_str_pct_decode_lenient_n_ (const char *pct_encoded,
  *                    truncated to zero length if broken encoding is found
  * @return the number of character in decoded string
  */
-size_t
-MHD_str_pct_decode_in_place_strict_ (char *str);
+_Tainted size_t
+MHD_str_pct_decode_in_place_strict_ (_TPtr<char> str);
 
 
 /**
@@ -595,9 +595,9 @@ MHD_str_pct_decode_in_place_strict_ (char *str);
  *                             optional, can be NULL
  * @return the number of character in decoded string
  */
-size_t
-MHD_str_pct_decode_in_place_lenient_ (char *str,
-                                      bool *broken_encoding);
+_Tainted size_t
+MHD_str_pct_decode_in_place_lenient_ (_TPtr<char> str,
+                                      _TPtr<bool> broken_encoding);
 
 #ifdef DAUTH_SUPPORT
 /**
@@ -620,9 +620,9 @@ MHD_str_pct_decode_in_place_lenient_ (char *str,
  *         first string.
  */
 bool
-MHD_str_equal_quoted_bin_n (const char *quoted,
+MHD_str_equal_quoted_bin_n (_TPtr<const char> quoted,
                             size_t quoted_len,
-                            const char *unquoted,
+                                    _TPtr<const char> unquoted,
                             size_t unquoted_len);
 
 /**
@@ -667,9 +667,14 @@ MHD_str_equal_quoted_bin_n (const char *quoted,
 bool
 MHD_str_equal_caseless_quoted_bin_n (const char *quoted,
                                      size_t quoted_len,
-                                     const char *unquoted,
+                                     const char* unquoted,
                                      size_t unquoted_len);
 
+_Tainted bool
+_T_MHD_str_equal_caseless_quoted_bin_n (_TPtr<const char> quoted,
+        size_t quoted_len,
+        _TPtr<const char> unquoted,
+        size_t unquoted_len);
 /**
  * Check whether the string after "unquoting" equals static string, ignoring
  * case of US-ASCII letters.
@@ -706,9 +711,14 @@ MHD_str_equal_caseless_quoted_bin_n (const char *quoted,
  *         @a quoted_len is zero).
  */
 size_t
-MHD_str_unquote (const char *quoted,
+MHD_str_unquote (const char* quoted,
                  size_t quoted_len,
-                 char *result);
+                 char* result);
+
+_Tainted size_t
+_T_MHD_str_unquote (_TPtr<const char> quoted,
+                 size_t quoted_len,
+                 _TPtr<char> result);
 
 #endif /* DAUTH_SUPPORT */
 
@@ -730,10 +740,16 @@ MHD_str_unquote (const char *quoted,
  *         string is larger than @a buf_size.
  */
 size_t
-MHD_str_quote (const char *unquoted,
+MHD_str_quote (const char* unquoted,
                size_t unquoted_len,
-               char *result,
+               char* result,
                size_t buf_size);
+
+_Tainted size_t
+_T_MHD_str_quote (_TPtr<const char> unquoted,
+        size_t unquoted_len,
+        _TPtr<char> result,
+        size_t buf_size);
 
 #endif /* DAUTH_SUPPORT || BAUTH_SUPPORT */
 
@@ -761,6 +777,12 @@ MHD_base64_to_bin_n (const char *base64,
                      size_t base64_len,
                      void *bin,
                      size_t bin_size);
+
+_Tainted size_t
+_T_MHD_base64_to_bin_n (_TPtr<const char> base64,
+        size_t base64_len,
+        _TPtr<void> bin,
+        size_t bin_size);
 
 #endif /* BAUTH_SUPPORT */
 

@@ -80,7 +80,7 @@ ahc_nothing (void *cls,
              const char *url,
              const char *method,
              const char *version,
-             const char *upload_data, size_t *upload_data_size,
+             _TPtr<const char> upload_data, size_t *upload_data_size,
              void **req_cls)
 {
   (void) cls; (void) connection; (void) url;         /* Unused. Silent compiler warning. */

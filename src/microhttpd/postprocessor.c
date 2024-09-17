@@ -29,6 +29,8 @@
 #include "mhd_str.h"
 #include "mhd_compat.h"
 #include "mhd_assert.h"
+#include <checkcbox_extensions.h>
+#include <string_tainted.h>
 
 /**
  * Size of on-stack buffer that we use for un-escaping of the value.
@@ -49,6 +51,7 @@ MHD_create_post_processor (struct MHD_Connection *connection,
   const char *boundary;
   size_t blen;
 
+  _TPtr<char> twin= NULL;
   if ( (buffer_size < 256) ||
        (NULL == connection) ||
        (NULL == iter))
@@ -134,9 +137,9 @@ MHD_create_post_processor (struct MHD_Connection *connection,
  */
 static void
 process_value (struct MHD_PostProcessor *pp,
-               const char *value_start,
-               const char *value_end,
-               const char *last_escape)
+               _TPtr<const char> value_start,
+               _TPtr<const char> value_end,
+               _TPtr<const char> last_escape)
 {
   char xbuf[XBUF_SIZE + 1];
   size_t xoff;
@@ -158,7 +161,7 @@ process_value (struct MHD_PostProcessor *pp,
   {
     mhd_assert (value_end >= last_escape);
     pp->xbuf_pos = (size_t) (value_end - last_escape);
-    memcpy (pp->xbuf,
+    t_memcpy (pp->xbuf,
             last_escape,
             (size_t) (value_end - last_escape));
     value_end = last_escape;
@@ -178,7 +181,7 @@ process_value (struct MHD_PostProcessor *pp,
     /* move (additional) input into processing buffer */
     if (0 != delta)
     {
-      memcpy (&xbuf[xoff],
+      t_memcpy (&xbuf[xoff],
               value_start,
               delta);
       xoff += delta;
@@ -231,7 +234,12 @@ process_value (struct MHD_PostProcessor *pp,
     if (0 != xoff)
     {
       MHD_unescape_plus (xbuf);
-      xoff = MHD_http_unescape (xbuf);
+        _TPtr<char> _T_xbuf = t_malloc(strlen(xbuf)*sizeof(char));
+        t_strcpy(_T_xbuf, xbuf);
+        xoff = MHD_http_unescape (_T_xbuf);
+        t_strncpy(xbuf, _T_xbuf,xoff);
+        xbuf[xoff] = '\0';
+        t_free(_T_xbuf);
     }
     /* finally: call application! */
     if (pp->must_ikvi || (0 != xoff) )
@@ -274,18 +282,22 @@ process_value (struct MHD_PostProcessor *pp,
  * @param post_data_len number of bytes in @a post_data
  * @return #MHD_YES on success, #MHD_NO if there was an error processing the data
  */
+ /*
+  * There was a buffer overflow issue within this function.
+  * First Question --> What is it gonna take to encapsulate this function in a sandbox region
+  */
 static enum MHD_Result
 post_process_urlencoded (struct MHD_PostProcessor *pp,
-                         const char *post_data,
+                         _TPtr<const char> post_data,
                          size_t post_data_len)
 {
   char *kbuf = (char *) &pp[1];
   size_t poff;
-  const char *start_key = NULL;
-  const char *end_key = NULL;
-  const char *start_value = NULL;
-  const char *end_value = NULL;
-  const char *last_escape = NULL;
+  _TPtr<const char> start_key = NULL;
+  _TPtr<const char> end_key = NULL;
+  _TPtr<const char> start_value = NULL;
+  _TPtr<const char> end_value = NULL;
+  _TPtr<const char> last_escape = NULL;
 
   mhd_assert (PP_Callback != pp->state);
 
@@ -456,15 +468,19 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
         mhd_assert (end_key >= start_key);
         if (0 != key_len)
         {
-          if ( (pp->buffer_pos + key_len >= pp->buffer_size) ||
-               (pp->buffer_pos + key_len < pp->buffer_pos) )
+//          if ( (pp->buffer_pos + key_len >= pp->buffer_size) ||
+//               (pp->buffer_pos + key_len < pp->buffer_pos) ) -->LATEST FIXED VERSION
+            if ( (pp->buffer_pos + (end_key - start_key) > // --> BUGGY VERSION
+                      pp->buffer_size) ||
+                     (pp->buffer_pos + (end_key - start_key) <
+                      pp->buffer_pos) )
           {
             /* key too long, cannot parse! */
             pp->state = PP_Error;
             continue;
           }
           /* compute key, if we have not already */
-          memcpy (&kbuf[pp->buffer_pos],
+          t_memcpy (&kbuf[pp->buffer_pos],
                   start_key,
                   key_len);
           pp->buffer_pos += key_len;
@@ -481,7 +497,13 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
       {
         kbuf[pp->buffer_pos] = '\0'; /* 0-terminate key */
         MHD_unescape_plus (kbuf);
-        MHD_http_unescape (kbuf);
+          //since kbuf is NULL terminated, we can marshall it -->
+          _TPtr<char> _T_kbuf = (_TPtr<char>)t_malloc(strlen(kbuf)*sizeof(char));
+          t_strcpy(_T_kbuf, kbuf);
+          int cpyLen = MHD_http_unescape (_T_kbuf);
+          t_strncpy(kbuf, _T_kbuf, cpyLen);
+          kbuf[cpyLen] = '\0';
+          t_free(_T_kbuf);
         pp->must_unescape_key = false;
       }
       process_value (pp,
@@ -528,15 +550,15 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
     mhd_assert ((PP_ProcessKey == pp->state) || (NULL != end_key));
     if (NULL == end_key)
       end_key = &post_data[poff];
-    mhd_assert (end_key >= start_key);
+//    mhd_assert (end_key >= start_key);
     key_len = (size_t) (end_key - start_key);
-    mhd_assert (0 != key_len); /* it must be always non-zero here */
-    if (pp->buffer_pos + key_len >= pp->buffer_size)
-    {
-      pp->state = PP_Error;
-      return MHD_NO;
-    }
-    memcpy (&kbuf[pp->buffer_pos],
+//    mhd_assert (0 != key_len); /* it must be always non-zero here */
+//    if (pp->buffer_pos + key_len >= pp->buffer_size)
+//    {
+//      pp->state = PP_Error;
+//      return MHD_NO;
+//    } --> OVERFLOW FIXED VERSION
+    t_memcpy (&kbuf[pp->buffer_pos],
             start_key,
             key_len);
     pp->buffer_pos += key_len;
@@ -552,7 +574,12 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
     {
       kbuf[pp->buffer_pos] = '\0'; /* 0-terminate key */
       MHD_unescape_plus (kbuf);
-      MHD_http_unescape (kbuf);
+        _TPtr<char> _T_kbuf =  (_TPtr<char>)t_malloc(strlen(kbuf)*sizeof(char));
+        t_strcpy(_T_kbuf, kbuf);
+        int cpyLen = MHD_http_unescape (_T_kbuf);
+        t_strncpy(kbuf, _T_kbuf, cpyLen);
+        kbuf[cpyLen] = '\0';
+        t_free(_T_kbuf);
       pp->must_unescape_key = false;
     }
     if (NULL == end_value)
@@ -566,11 +593,11 @@ post_process_urlencoded (struct MHD_PostProcessor *pp,
                    last_escape);
     pp->must_ikvi = false;
   }
-  if (PP_Error == pp->state)
-  {
-    /* State in error, returning failure */
-    return MHD_NO;
-  }
+//  if (PP_Error == pp->state)
+//  {
+//    /* State in error, returning failure */
+//    return MHD_NO;
+//  } --> BUGFIX VERSION
   return MHD_YES;
 }
 
@@ -954,7 +981,7 @@ free_unmarked (struct MHD_PostProcessor *pp)
  */
 static enum MHD_Result
 post_process_multipart (struct MHD_PostProcessor *pp,
-                        const char *post_data,
+                        _TPtr<const char> post_data,
                         size_t post_data_len)
 {
   char *buf;
@@ -976,7 +1003,7 @@ post_process_multipart (struct MHD_PostProcessor *pp,
     max = pp->buffer_size - pp->buffer_pos;
     if (max > post_data_len - poff)
       max = post_data_len - poff;
-    memcpy (&buf[pp->buffer_pos],
+    t_memcpy (&buf[pp->buffer_pos],
             &post_data[poff],
             max);
     poff += max;
@@ -1264,7 +1291,7 @@ END:
 
 _MHD_EXTERN enum MHD_Result
 MHD_post_process (struct MHD_PostProcessor *pp,
-                  const char *post_data,
+                  _TPtr<const char> post_data,
                   size_t post_data_len)
 {
   if (0 == post_data_len)
@@ -1303,7 +1330,7 @@ MHD_destroy_post_processor (struct MHD_PostProcessor *pp)
        buffer; fake receiving a termination character to
        ensure it is also processed */
     post_process_urlencoded (pp,
-                             "\n",
+                             StaticUncheckedToTStrAdaptor("\n",1),
                              1);
   }
   /* These internal strings need cleaning up since

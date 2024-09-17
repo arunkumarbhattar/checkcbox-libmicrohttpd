@@ -23,7 +23,7 @@
  * @author Amr Ali
  * @author Karlson2k (Evgeny Grin)
  */
-
+#include <checkcbox_extensions.h>
 #include "platform.h"
 #include <microhttpd.h>
 #include <stdlib.h>
@@ -44,7 +44,7 @@ ahc_echo (void *cls,
           const char *url,
           const char *method,
           const char *version,
-          const char *upload_data, size_t *upload_data_size, void **req_cls)
+          _TPtr<const char> upload_data, size_t *upload_data_size, void **req_cls)
 {
   struct MHD_Response *response;
   char *username;
@@ -81,11 +81,15 @@ ahc_echo (void *cls,
     MHD_destroy_response (response);
     return ret;
   }
-  res_e = MHD_digest_auth_check3 (connection, realm,
-                                  username,
-                                  password,
+  _TPtr<char>_T_realm = StaticUncheckedToTStrAdaptor(realm, strlen(realm));
+    _TPtr<char>_T_username = StaticUncheckedToTStrAdaptor(username, strlen(username));
+    _TPtr<char>_T_password= StaticUncheckedToTStrAdaptor(password, strlen(password));
+  res_e = MHD_digest_auth_check3 (connection, _T_realm,
+                                  _T_username,
+                                  _T_password,
                                   300, 60, MHD_DIGEST_AUTH_MULT_QOP_AUTH,
                                   MHD_DIGEST_AUTH_MULT_ALGO3_MD5);
+  t_free(_T_realm); t_free(_T_username); t_free(_T_password);
   MHD_free (username);
   if (res_e != MHD_DAUTH_OK)
   {

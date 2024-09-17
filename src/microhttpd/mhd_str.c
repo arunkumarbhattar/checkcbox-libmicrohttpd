@@ -33,6 +33,7 @@
 #include "mhd_assert.h"
 #include "mhd_limits.h"
 #include "mhd_assert.h"
+#include <checkcbox_extensions.h>
 
 #ifdef MHD_FAVOR_SMALL_CODE
 #ifdef _MHD_static_inline
@@ -77,7 +78,7 @@ isasciilower (char c)
  * @param c character to check
  * @return non-zero if character is upper case letter, zero otherwise
  */
-_MHD_static_inline bool
+_MHD_static_inline _Mirror bool
 isasciiupper (char c)
 {
   return (c >= 'A') && (c <= 'Z');
@@ -107,7 +108,7 @@ isasciialpha (char c)
  * @param c character to check
  * @return non-zero if character is decimal digit, zero otherwise
  */
-_MHD_static_inline bool
+_MHD_static_inline _Mirror bool
 isasciidigit (char c)
 {
   return (c >= '0') && (c <= '9');
@@ -208,7 +209,7 @@ todigitvalue (char c)
  * @param c character to convert
  * @return value of hexadecimal digit or -1 if @ c is not hexadecimal digit
  */
-_MHD_static_inline int
+_MHD_static_inline _Mirror int
 toxdigitvalue (char c)
 {
   if (isasciidigit (c))
@@ -229,7 +230,7 @@ toxdigitvalue (char c)
  * @param c2 the second char to compare
  * @return boolean 'true' if chars are caseless equal, false otherwise
  */
-_MHD_static_inline bool
+_MHD_static_inline _Mirror bool
 charsequalcaseless (const char c1, const char c2)
 {
   return ( (c1 == c2) ||
@@ -1108,8 +1109,8 @@ MHD_strx_to_uint64_ (const char *str,
  *         zero if no digit is found, resulting value is larger
  *         then possible to store in uint64_t or @a out_val is NULL
  */
-size_t
-MHD_strx_to_uint64_n_ (const char *str,
+_TLIB size_t
+MHD_strx_to_uint64_n_ (const char* str : itype(_TPtr<const char>),
                        size_t maxlen,
                        uint64_t *out_val)
 {
@@ -1437,10 +1438,10 @@ MHD_hex_to_bin (const char *hex,
 }
 
 
-size_t
-MHD_str_pct_decode_strict_n_ (const char *pct_encoded,
+_Tainted size_t
+MHD_str_pct_decode_strict_n_ (_TPtr<const char> pct_encoded,
                               size_t pct_encoded_len,
-                              char *decoded,
+                              _TPtr<char> decoded,
                               size_t buf_size)
 {
 #ifdef MHD_FAVOR_SMALL_CODE
@@ -1453,170 +1454,28 @@ MHD_str_pct_decode_strict_n_ (const char *pct_encoded,
     return 0;
   return res;
 #else  /* ! MHD_FAVOR_SMALL_CODE */
-  size_t r;
-  size_t w;
-  r = 0;
-  w = 0;
-
-  if (buf_size >= pct_encoded_len)
-  {
-    while (r < pct_encoded_len)
-    {
-      const char chr = pct_encoded[r];
-      if ('%' == chr)
-      {
-        if (2 > pct_encoded_len - r)
-          return 0;
-        else
-        {
-          const int h = toxdigitvalue (pct_encoded[++r]);
-          const int l = toxdigitvalue (pct_encoded[++r]);
-          unsigned char out;
-          if ((0 > h) || (0 > l))
-            return 0;
-          out = (unsigned char) ( (((uint8_t) ((unsigned int) h)) << 4)
-                                  | ((uint8_t) ((unsigned int) l)) );
-          decoded[w] = (char) out;
-        }
-      }
-      else
-        decoded[w] = chr;
-      ++r;
-      ++w;
-    }
-    return w;
-  }
-
-  while (r < pct_encoded_len)
-  {
-    const char chr = pct_encoded[r];
-    if (w >= buf_size)
-      return 0;
-    if ('%' == chr)
-    {
-      if (2 > pct_encoded_len - r)
-        return 0;
-      else
-      {
-        const int h = toxdigitvalue (pct_encoded[++r]);
-        const int l = toxdigitvalue (pct_encoded[++r]);
-        unsigned char out;
-        if ((0 > h) || (0 > l))
-          return 0;
-        out = (unsigned char) ( (((uint8_t) ((unsigned int) h)) << 4)
-                                | ((uint8_t) ((unsigned int) l)) );
-        decoded[w] = (char) out;
-      }
-    }
-    else
-      decoded[w] = chr;
-    ++r;
-    ++w;
-  }
-  return w;
+  return w2c_MHD_str_pct_decode_strict_n_(c_fetch_sandbox_address(),
+    (int)pct_encoded,
+    pct_encoded_len, (int)decoded, buf_size);
 #endif /* ! MHD_FAVOR_SMALL_CODE */
 }
 
 
-size_t
-MHD_str_pct_decode_lenient_n_ (const char *pct_encoded,
+_Tainted size_t
+MHD_str_pct_decode_lenient_n_ (_TPtr<const char> pct_encoded,
                                size_t pct_encoded_len,
-                               char *decoded,
+                               _TPtr<char> decoded,
                                size_t buf_size,
-                               bool *broken_encoding)
+                               _TPtr<bool> broken_encoding)
 {
-  size_t r;
-  size_t w;
-  r = 0;
-  w = 0;
-  if (NULL != broken_encoding)
-    *broken_encoding = false;
-#ifndef MHD_FAVOR_SMALL_CODE
-  if (buf_size >= pct_encoded_len)
-  {
-    while (r < pct_encoded_len)
-    {
-      const char chr = pct_encoded[r];
-      if ('%' == chr)
-      {
-        if (2 > pct_encoded_len - r)
-        {
-          if (NULL != broken_encoding)
-            *broken_encoding = true;
-          decoded[w] = chr; /* Copy "as is" */
-        }
-        else
-        {
-          const int h = toxdigitvalue (pct_encoded[++r]);
-          const int l = toxdigitvalue (pct_encoded[++r]);
-          unsigned char out;
-          if ((0 > h) || (0 > l))
-          {
-            r -= 2;
-            if (NULL != broken_encoding)
-              *broken_encoding = true;
-            decoded[w] = chr; /* Copy "as is" */
-          }
-          else
-          {
-            out = (unsigned char) ( (((uint8_t) ((unsigned int) h)) << 4)
-                                    | ((uint8_t) ((unsigned int) l)) );
-            decoded[w] = (char) out;
-          }
-        }
-      }
-      else
-        decoded[w] = chr;
-      ++r;
-      ++w;
-    }
-    return w;
-  }
-#endif /* ! MHD_FAVOR_SMALL_CODE */
-  while (r < pct_encoded_len)
-  {
-    const char chr = pct_encoded[r];
-    if (w >= buf_size)
-      return 0;
-    if ('%' == chr)
-    {
-      if (2 > pct_encoded_len - r)
-      {
-        if (NULL != broken_encoding)
-          *broken_encoding = true;
-        decoded[w] = chr; /* Copy "as is" */
-      }
-      else
-      {
-        const int h = toxdigitvalue (pct_encoded[++r]);
-        const int l = toxdigitvalue (pct_encoded[++r]);
-        if ((0 > h) || (0 > l))
-        {
-          r -= 2;
-          if (NULL != broken_encoding)
-            *broken_encoding = true;
-          decoded[w] = chr; /* Copy "as is" */
-        }
-        else
-        {
-          unsigned char out;
-          out = (unsigned char) ( (((uint8_t) ((unsigned int) h)) << 4)
-                                  | ((uint8_t) ((unsigned int) l)) );
-          decoded[w] = (char) out;
-        }
-      }
-    }
-    else
-      decoded[w] = chr;
-    ++r;
-    ++w;
-  }
-  return w;
+    return w2c_MHD_str_pct_decode_lenient_n_(c_fetch_sandbox_address(),
+                                             (int)pct_encoded,
+        pct_encoded_len, (int)decoded, buf_size, (int)broken_encoding);
 }
 
 
-size_t
-MHD_str_pct_decode_in_place_strict_ (char *str)
+_Tainted size_t
+MHD_str_pct_decode_in_place_strict_ (_TPtr<char> str)
 {
 #ifdef MHD_FAVOR_SMALL_CODE
   size_t res;
@@ -1630,49 +1489,14 @@ MHD_str_pct_decode_in_place_strict_ (char *str)
   }
   return res;
 #else  /* ! MHD_FAVOR_SMALL_CODE */
-  size_t r;
-  size_t w;
-  r = 0;
-  w = 0;
-
-  while (0 != str[r])
-  {
-    const char chr = str[r++];
-    if ('%' == chr)
-    {
-      const char d1 = str[r++];
-      if (0 == d1)
-        return 0;
-      else
-      {
-        const char d2 = str[r++];
-        if (0 == d2)
-          return 0;
-        else
-        {
-          const int h = toxdigitvalue (d1);
-          const int l = toxdigitvalue (d2);
-          unsigned char out;
-          if ((0 > h) || (0 > l))
-            return 0;
-          out = (unsigned char) ( (((uint8_t) ((unsigned int) h)) << 4)
-                                  | ((uint8_t) ((unsigned int) l)) );
-          str[w++] = (char) out;
-        }
-      }
-    }
-    else
-      str[w++] = chr;
-  }
-  str[w] = 0;
-  return w;
+ return w2c_MHD_str_pct_decode_in_place_strict_(c_fetch_sandbox_address(), (int)str);
 #endif /* ! MHD_FAVOR_SMALL_CODE */
 }
 
 
-size_t
-MHD_str_pct_decode_in_place_lenient_ (char *str,
-                                      bool *broken_encoding)
+_Tainted size_t
+MHD_str_pct_decode_in_place_lenient_ (_TPtr<char> str,
+                                      _TPtr<bool> broken_encoding)
 {
 #ifdef MHD_FAVOR_SMALL_CODE
   size_t len;
@@ -1684,150 +1508,65 @@ MHD_str_pct_decode_in_place_lenient_ (char *str,
 
   return res;
 #else  /* ! MHD_FAVOR_SMALL_CODE */
-  size_t r;
-  size_t w;
-  if (NULL != broken_encoding)
-    *broken_encoding = false;
-  r = 0;
-  w = 0;
-  while (0 != str[r])
-  {
-    const char chr = str[r++];
-    if ('%' == chr)
-    {
-      const char d1 = str[r++];
-      if (0 == d1)
-      {
-        if (NULL != broken_encoding)
-          *broken_encoding = true;
-        str[w++] = chr; /* Copy "as is" */
-        str[w] = 0;
-        return w;
-      }
-      else
-      {
-        const char d2 = str[r++];
-        if (0 == d2)
-        {
-          if (NULL != broken_encoding)
-            *broken_encoding = true;
-          str[w++] = chr; /* Copy "as is" */
-          str[w++] = d1; /* Copy "as is" */
-          str[w] = 0;
-          return w;
-        }
-        else
-        {
-          const int h = toxdigitvalue (d1);
-          const int l = toxdigitvalue (d2);
-          unsigned char out;
-          if ((0 > h) || (0 > l))
-          {
-            if (NULL != broken_encoding)
-              *broken_encoding = true;
-            str[w++] = chr; /* Copy "as is" */
-            str[w++] = d1;
-            str[w++] = d2;
-            continue;
-          }
-          out = (unsigned char) ( (((uint8_t) ((unsigned int) h)) << 4)
-                                  | ((uint8_t) ((unsigned int) l)) );
-          str[w++] = (char) out;
-          continue;
-        }
-      }
-    }
-    str[w++] = chr;
-  }
-  str[w] = 0;
-  return w;
+  return w2c_MHD_str_pct_decode_in_place_lenient_(c_fetch_sandbox_address(),
+                                                  (int)str,
+                                                  (int) broken_encoding);
 #endif /* ! MHD_FAVOR_SMALL_CODE */
 }
 
 
 #ifdef DAUTH_SUPPORT
-bool
-MHD_str_equal_quoted_bin_n (const char *quoted,
+_Tainted bool
+MHD_str_equal_quoted_bin_n (_TPtr<const char> quoted,
                             size_t quoted_len,
-                            const char *unquoted,
+                            _TPtr<const char> unquoted,
                             size_t unquoted_len)
 {
-  size_t i;
-  size_t j;
-  if (unquoted_len < quoted_len / 2)
-    return false;
-
-  j = 0;
-  for (i = 0; quoted_len > i && unquoted_len > j; ++i, ++j)
-  {
-    if ('\\' == quoted[i])
-    {
-      i++; /* Advance to the next character */
-      if (quoted_len == i)
-        return false; /* No character after escaping backslash */
-    }
-    if (quoted[i] != unquoted[j])
-      return false; /* Different characters */
-  }
-  if ((quoted_len != i) || (unquoted_len != j))
-    return false; /* The strings have different length */
-
-  return true;
+    return w2c_MHD_str_equal_quoted_bin_n(c_fetch_sandbox_address(), (int)quoted, quoted_len, (int)unquoted, unquoted_len);
 }
 
 
 bool
-MHD_str_equal_caseless_quoted_bin_n (const char *quoted,
-                                     size_t quoted_len,
-                                     const char *unquoted,
-                                     size_t unquoted_len)
+MHD_str_equal_caseless_quoted_bin_n (const char* quoted,
+                                        size_t quoted_len,
+                                        const char* unquoted,
+                                        size_t unquoted_len)
 {
-  size_t i;
-  size_t j;
-  if (unquoted_len < quoted_len / 2)
-    return false;
-
-  j = 0;
-  for (i = 0; quoted_len > i && unquoted_len > j; ++i, ++j)
-  {
-    if ('\\' == quoted[i])
-    {
-      i++; /* Advance to the next character */
-      if (quoted_len == i)
-        return false; /* No character after escaping backslash */
-    }
-    if (! charsequalcaseless (quoted[i], unquoted[j]))
-      return false; /* Different characters */
-  }
-  if ((quoted_len != i) || (unquoted_len != j))
-    return false; /* The strings have different length */
-
-  return true;
+    _TPtr<char> _T_quoted = StaticUncheckedToTStrAdaptor(quoted, quoted_len);
+    _TPtr<char> _T_unquoted = StaticUncheckedToTStrAdaptor(unquoted, unquoted_len);
+    bool RetVal = _T_MHD_str_equal_caseless_quoted_bin_n(_T_quoted, quoted_len, _T_unquoted, unquoted_len);
+    t_free(_T_quoted); t_free(_T_unquoted);
+    return RetVal;
 }
 
+_Tainted bool
+_T_MHD_str_equal_caseless_quoted_bin_n (_TPtr<const char> quoted,
+                                     size_t quoted_len,
+                                     _TPtr<const char> unquoted,
+                                     size_t unquoted_len)
+{
+    return w2c__T_MHD_str_equal_caseless_quoted_bin_n(c_fetch_sandbox_address(), (int) quoted, quoted_len, (int)unquoted
+                                                   , unquoted_len);
+}
 
 size_t
-MHD_str_unquote (const char *quoted,
-                 size_t quoted_len,
-                 char *result)
+MHD_str_unquote (const char* quoted,
+        size_t quoted_len,
+        char* result)
 {
-  size_t r;
-  size_t w;
-
-  r = 0;
-  w = 0;
-
-  while (quoted_len > r)
-  {
-    if ('\\' == quoted[r])
-    {
-      ++r;
-      if (quoted_len == r)
-        return 0; /* Last backslash is not followed by char to unescape */
-    }
-    result[w++] = quoted[r++];
-  }
-  return w;
+    _TPtr<char> _T_quoted = StaticUncheckedToTStrAdaptor(quoted, quoted_len);
+    _TPtr<char> _T_result = StaticUncheckedToTStrAdaptor(result, quoted_len);
+    size_t RetVal = _T_MHD_str_unquote(_T_quoted, quoted_len, _T_result);
+    t_memcpy(result, _T_result, RetVal);
+    t_free(_T_quoted); t_free(_T_result);
+    return RetVal;
+}
+_Tainted size_t
+_T_MHD_str_unquote (_TPtr<const char> quoted,
+                 size_t quoted_len,
+                 _TPtr<char> result)
+{
+    return w2c__T_MHD_str_unquote(c_fetch_sandbox_address(), (int)quoted, quoted_len, (int)result);
 }
 
 
@@ -1836,59 +1575,27 @@ MHD_str_unquote (const char *quoted,
 #if defined(DAUTH_SUPPORT) || defined(BAUTH_SUPPORT)
 
 size_t
-MHD_str_quote (const char *unquoted,
+MHD_str_quote (const char* unquoted,
+        size_t unquoted_len,
+        char* result,
+        size_t buf_size)
+{
+    _TPtr<char> _T_unquoted = StaticUncheckedToTStrAdaptor(unquoted, unquoted_len);
+    _TPtr<char> _T_result = StaticUncheckedToTStrAdaptor(result, buf_size);
+    size_t RetVal = _T_MHD_str_quote(_T_unquoted, unquoted_len, _T_result, buf_size);
+    t_memcpy(result, _T_result, RetVal);
+    t_free(_T_unquoted); t_free(_T_result);
+    return RetVal;
+}
+
+_Tainted size_t
+_T_MHD_str_quote (_TPtr<const char> unquoted,
                size_t unquoted_len,
-               char *result,
+               _TPtr<char> result,
                size_t buf_size)
 {
-  size_t r;
-  size_t w;
-
-  r = 0;
-  w = 0;
-
-#ifndef MHD_FAVOR_SMALL_CODE
-  if (unquoted_len * 2 <= buf_size)
-  {
-    /* Fast loop: the output will fit the buffer with any input string content */
-    while (unquoted_len > r)
-    {
-      const char chr = unquoted[r++];
-      if (('\\' == chr) || ('\"' == chr))
-        result[w++] = '\\'; /* Escape current char */
-      result[w++] = chr;
-    }
-  }
-  else
-  {
-    if (unquoted_len > buf_size)
-      return 0; /* Quick fail: the output buffer is too small */
-#else  /* MHD_FAVOR_SMALL_CODE */
-  if (1)
-  {
-#endif /* MHD_FAVOR_SMALL_CODE */
-
-    while (unquoted_len > r)
-    {
-      if (buf_size <= w)
-        return 0; /* The output buffer is too small */
-      else
-      {
-        const char chr = unquoted[r++];
-        if (('\\' == chr) || ('\"' == chr))
-        {
-          result[w++] = '\\'; /* Escape current char */
-          if (buf_size <= w)
-            return 0; /* The output buffer is too small */
-        }
-        result[w++] = chr;
-      }
-    }
-  }
-
-  mhd_assert (w >= r);
-  mhd_assert (w <= r * 2);
-  return w;
+    return w2c__T_MHD_str_quote(c_fetch_sandbox_address(), (int)unquoted,
+                        unquoted_len, (int)result, buf_size);
 }
 
 
@@ -1900,107 +1607,23 @@ size_t
 MHD_base64_to_bin_n (const char *base64,
                      size_t base64_len,
                      void *bin,
+                     size_t bin_size) {
+    _TPtr<char> _T_base64 = StaticUncheckedToTStrAdaptor(base64, base64_len);
+    _TPtr<void> _T_bin = (_TPtr<void>)StaticUncheckedToTStrAdaptor(bin, bin_size);
+    size_t RetVal = _T_MHD_base64_to_bin_n(_T_base64, base64_len, _T_bin, bin_size);
+    t_memcpy(bin, _T_bin, RetVal);
+    t_free(_T_base64); t_free(_T_bin);
+    return RetVal;
+}
+
+_Tainted size_t
+_T_MHD_base64_to_bin_n (_TPtr<const char> base64,
+                     size_t base64_len,
+                     _TPtr<void> bin,
                      size_t bin_size)
 {
-#ifndef MHD_FAVOR_SMALL_CODE
-#define map_type int
-#else  /* MHD_FAVOR_SMALL_CODE */
-#define map_type int8_t
-#endif /* MHD_FAVOR_SMALL_CODE */
-  static const map_type map[] = {
-    /* -1 = invalid char, -2 = padding
-     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  A,  B,  C,  D,  E,  F */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* 00..0F */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* 10..1F */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,  /* 20..2F */
-    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -2, -1, -1,  /* 30..3F */
-    -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,  /* 40..4F */
-    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,  /* 50..5F */
-    -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,  /* 60..6F */
-    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1   /* 70..7F */
-#ifndef MHD_FAVOR_SMALL_CODE
-    ,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* 80..8F */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* 90..9F */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* A0..AF */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* B0..BF */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* C0..CF */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* D0..DF */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* E0..EF */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  /* F0..FF */
-#endif /* ! MHD_FAVOR_SMALL_CODE */
-  };
-  const uint8_t *const in = (const uint8_t *) base64;
-  uint8_t *const out = (uint8_t *) bin;
-  size_t i;
-  size_t j;
-  if (0 == base64_len)
-    return 0;  /* Nothing to decode */
-  if (0 != base64_len % 4)
-    return 0;  /* Wrong input length */
-  if (base64_len / 4 * 3 - 2 > bin_size)
-    return 0;
-
-  j = 0;
-  for (i = 0; i < (base64_len - 4); i += 4)
-  {
-#ifdef MHD_FAVOR_SMALL_CODE
-    if (0 != (0x80 & (in[i] | in[i + 1] | in[i + 2] | in[i + 3])))
-      return 0;
-#endif /* MHD_FAVOR_SMALL_CODE */
-    if (1)
-    {
-      const map_type v1 = map[in[i + 0]];
-      const map_type v2 = map[in[i + 1]];
-      const map_type v3 = map[in[i + 2]];
-      const map_type v4 = map[in[i + 3]];
-      if ((0 > v1) || (0 > v2) || (0 > v3) || (0 > v4))
-        return 0;
-      out[j + 0] = (uint8_t) ((((uint8_t) v1) << 2) | (((uint8_t) v2) >> 4));
-      out[j + 1] = (uint8_t) ((((uint8_t) v2) << 4) | (((uint8_t) v3) >> 2));
-      out[j + 2] = (uint8_t) ((((uint8_t) v3) << 6) | (((uint8_t) v4)));
-    }
-    j += 3;
-  }
-#ifdef MHD_FAVOR_SMALL_CODE
-  if (0 != (0x80 & (in[i] | in[i + 1] | in[i + 2] | in[i + 3])))
-    return 0;
-#endif /* MHD_FAVOR_SMALL_CODE */
-  if (1)
-  { /* The last four chars block */
-    const map_type v1 = map[in[i + 0]];
-    const map_type v2 = map[in[i + 1]];
-    const map_type v3 = map[in[i + 2]];
-    const map_type v4 = map[in[i + 3]];
-    if ((0 > v1) || (0 > v2))
-      return 0; /* Invalid char or padding at first two positions */
-    mhd_assert (j < bin_size);
-    out[j++] = (uint8_t) ((((uint8_t) v1) << 2) | (((uint8_t) v2) >> 4));
-    if (0 > v3)
-    { /* Third char is either padding or invalid */
-      if ((-2 != v3) || (-2 != v4))
-        return 0;  /* Both two last chars must be padding */
-      if (0 != (uint8_t) (((uint8_t) v2) << 4))
-        return 0;  /* Wrong last char */
-      return j;
-    }
-    if (j >= bin_size)
-      return 0; /* Not enough space */
-    out[j++] = (uint8_t) ((((uint8_t) v2) << 4) | (((uint8_t) v3) >> 2));
-    if (0 > v4)
-    { /* Fourth char is either padding or invalid */
-      if (-2 != v4)
-        return 0;  /* The char must be padding */
-      if (0 != (uint8_t) (((uint8_t) v3) << 6))
-        return 0;  /* Wrong last char */
-      return j;
-    }
-    if (j >= bin_size)
-      return 0; /* Not enough space */
-    out[j++] = (uint8_t) ((((uint8_t) v3) << 6) | (((uint8_t) v4)));
-  }
-  return j;
-#undef map_type
+    return w2c__T_MHD_base64_to_bin_n(c_fetch_sandbox_address(), (int)base64,
+                                    base64_len, (int)bin, bin_size);
 }
 
 

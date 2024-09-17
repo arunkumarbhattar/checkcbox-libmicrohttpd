@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
+#include <checkcbox_extensions.h>
 static uint64_t num_errors;
 
 static enum MHD_Result
@@ -93,9 +93,10 @@ main (int argc, char *const *argv)
   if (NULL == pp)
     return 1;
 
-  if (MHD_YES != MHD_post_process (pp, post, strlen (post)))
+  if (MHD_YES != MHD_post_process (pp, StaticUncheckedToTStrAdaptor(post, strlen (post)), strlen (post)))
     num_errors++;
   MHD_destroy_post_processor (pp);
 
+  t_free(GlobalTaintedAdaptorStr);
   return num_errors == 0 ? 0 : 2;
 }

@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include "mhd_str.h"
 #include "mhd_assert.h"
+#include <checkcbox_extensions.h>
 
 #ifndef MHD_STATICSTR_LEN_
 /**
@@ -90,7 +91,7 @@ expect_result_unquote_n (const char *const quoted, const size_t quoted_len,
 
   /* Second check: MHD_str_equal_quoted_bin_n () */
   ret2 = 0;
-  if (! MHD_str_equal_quoted_bin_n (quoted, quoted_len, unquoted, unquoted_len))
+  if (! MHD_str_equal_quoted_bin_n (StaticUncheckedToTStrAdaptor(quoted, quoted_len), quoted_len, StaticUncheckedToTStrAdaptor(unquoted, unquoted_len), unquoted_len))
   {
     fprintf (stderr,
              "'MHD_str_equal_quoted_bin_n ()' FAILED: Wrong result:\n");
@@ -427,7 +428,7 @@ expect_result_unmatch_n (const char *const quoted, const size_t quoted_len,
 
   /* The check: MHD_str_equal_quoted_bin_n () */
   ret2 = 0;
-  if (MHD_str_equal_quoted_bin_n (quoted, quoted_len, unquoted, unquoted_len))
+  if (MHD_str_equal_quoted_bin_n (StaticUncheckedToTStrAdaptor(quoted, quoted_len), quoted_len, StaticUncheckedToTStrAdaptor(unquoted, unquoted_len), unquoted_len))
   {
     fprintf (stderr,
              "'MHD_str_equal_quoted_bin_n ()' FAILED: Wrong result:\n");
@@ -603,7 +604,7 @@ expect_result_case_unmatch_n (const char *const quoted,
 
   /* THe check: MHD_str_equal_quoted_bin_n () */
   ret2 = 0;
-  if (MHD_str_equal_quoted_bin_n (quoted, quoted_len, unquoted, unquoted_len))
+  if (MHD_str_equal_quoted_bin_n (StaticUncheckedToTStrAdaptor(quoted, quoted_len) , quoted_len, StaticUncheckedToTStrAdaptor(unquoted, unquoted_len), unquoted_len))
   {
     fprintf (stderr,
              "'MHD_str_equal_quoted_bin_n ()' FAILED: Wrong result:\n");
@@ -673,7 +674,7 @@ expect_result_caseless_unmatch_n (const char *const quoted,
 
   /* The check: MHD_str_equal_quoted_bin_n () */
   ret2 = 0;
-  if (MHD_str_equal_quoted_bin_n (quoted, quoted_len, unquoted, unquoted_len))
+  if (MHD_str_equal_quoted_bin_n (StaticUncheckedToTStrAdaptor(quoted, quoted_len), quoted_len, StaticUncheckedToTStrAdaptor(unquoted, unquoted_len), unquoted_len))
   {
     fprintf (stderr,
              "'MHD_str_equal_quoted_bin_n ()' FAILED: Wrong result:\n");

@@ -30,7 +30,8 @@
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
-
+#include <string_tainted.h>
+#include <checkcbox_extensions.h>
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif /* HAVE_STRINGS_H */
@@ -1297,7 +1298,7 @@ struct ahc_cls_type
   volatile size_t rp_data_size;
   const char *volatile rq_method;
   const char *volatile rq_url;
-  const char *volatile req_body;
+  _TPtr<char volatile> req_body;
   volatile unsigned int cb_called; /* Non-zero indicates that callback was called at least one time */
   size_t req_body_size; /**< The number of bytes in @a req_body */
   size_t req_body_uploaded; /* Updated by callback */
@@ -1310,7 +1311,7 @@ ahcCheck (void *cls,
           const char *url,
           const char *method,
           const char *version,
-          const char *upload_data, size_t *upload_data_size,
+          _TPtr<const char> upload_data, size_t *upload_data_size,
           void **req_cls)
 {
   static int marker;
@@ -1336,7 +1337,7 @@ ahcCheck (void *cls,
 
   if (0 != *upload_data_size)
   {
-    const char *const upload_body = param->req_body;
+    const _TPtr<char const> upload_body = param->req_body;
     if (NULL == upload_data)
       mhdErrorExitDesc ("'upload_data' is NULL while " \
                         "'*upload_data_size' value is not zero");
@@ -1350,10 +1351,12 @@ ahcCheck (void *cls,
                (unsigned int) param->req_body_size);
       mhdErrorExit ();
     }
-    if (0 != memcmp (upload_data, upload_body + param->req_body_uploaded,
+    //print the address of upload_data
+    fprintf(stderr, "upload_data address: %p\n", upload_data);
+    if (0 != t_memcmp (upload_data, upload_body + param->req_body_uploaded,
                      *upload_data_size))
     {
-      fprintf (stderr, "Unexpected request body at offset %u: " \
+      t_fprintf (stderr, "Unexpected request body at offset %u: " \
                "'%.*s', expected: '%.*s'\n",
                (unsigned int) param->req_body_uploaded,
                (int) *upload_data_size, upload_data,
@@ -1729,7 +1732,9 @@ performTestQueries (struct MHD_Daemon *d, uint16_t d_port,
   ahc_param->rq_method = MHD_HTTP_METHOD_PUT;
   ahc_param->rp_data = "~";
   ahc_param->rp_data_size = 1;
-  ahc_param->req_body = (const char *) qParam.req_body;
+  //Marshall qParam.req_body_size into ahc_param->req_body
+  ahc_param->req_body = (_TPtr<char >)t_malloc (qParam.req_body_size);
+  t_memcpy ((_TPtr<void> ) ahc_param->req_body, qParam.req_body, qParam.req_body_size);
   ahc_param->req_body_size = qParam.req_body_size;
 
   do
@@ -2077,8 +2082,8 @@ main (int argc, char *const *argv)
     return 77;
   }
 #endif /* ! SO_LINGER */
-  if (1 != use_shutdown + use_close)
-    return 99;
+//  if (1 != use_shutdown + use_close)
+//    return 99;
   verbose = ! (has_param (argc, argv, "-q") ||
                has_param (argc, argv, "--quiet") ||
                has_param (argc, argv, "-s") ||

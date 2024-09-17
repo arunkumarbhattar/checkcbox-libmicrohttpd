@@ -55,7 +55,7 @@
 #endif /* HAVE_SYS_PARAM_H */
 #include "mhd_send.h"
 #include "mhd_assert.h"
-
+#include <checkcbox_extensions.h>
 /**
  * Message to transmit when http 1.1 request is received
  */
@@ -3451,7 +3451,7 @@ process_request_body (struct MHD_Connection *connection)
   struct MHD_Daemon *daemon = connection->daemon;
   size_t available;
   bool instant_retry;
-  char *buffer_head;
+  _TPtr<char> buffer_head = NULL;
 
   connection->rq.some_payload_processed = false;
 
@@ -3474,7 +3474,7 @@ process_request_body (struct MHD_Connection *connection)
     return;
   }
 
-  buffer_head = connection->read_buffer;
+  buffer_head = CheckedToTaintedStrAdaptor(connection->read_buffer);
   available = connection->read_buffer_offset;
   do
   {
@@ -3719,7 +3719,7 @@ process_request_body (struct MHD_Connection *connection)
   /* TODO: zero out reused memory region */
   if ( (available > 0) &&
        (buffer_head != connection->read_buffer) )
-    memmove (connection->read_buffer,
+    t_memmove (connection->read_buffer,
              buffer_head,
              available);
   else
